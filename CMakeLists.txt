@@ -109,7 +109,15 @@ if(STATIC)
   set(Boost_USE_STATIC_LIBS ON)
   set(Boost_USE_STATIC_RUNTIME ON)
 endif()
+set(Boost_DEBUG TRUE)
+
 find_package(Boost 1.55 REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options)
+
+message(STATUS "Boost_VERSION=" ${Boost_VERSION})
+message(STATUS "Boost_LIBRARIES=" ${Boost_LIBRARIES})
+message(STATUS "Boost_LIBRARY_DIRS=" ${Boost_LIBRARY_DIRS})
+message(STATUS "Boost_INCLUDE_DIRS=" ${Boost_INCLUDE_DIRS})
+
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 if(MINGW)
   set(Boost_LIBRARIES "${Boost_LIBRARIES};ws2_32;mswsock")
