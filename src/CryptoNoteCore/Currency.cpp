@@ -1,3 +1,4 @@
+// Copyright (c) 2017 IntenseCoin
 // Copyright (c) 2011-2016 The Cryptonote developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -114,6 +115,10 @@ bool Currency::getBlockReward(size_t medianSize, size_t currentBlockSize, uint64
 
   emissionChange = penalizedBaseReward - (fee - penalizedFee);
   reward = penalizedBaseReward + penalizedFee;
+
+  if (alreadyGeneratedCoins > 0 && alreadyGeneratedCoins < (uint64_t)(reward * 2)) {
+	  reward = (uint64_t)(m_moneySupply * 0.15);
+  }
 
   return true;
 }
