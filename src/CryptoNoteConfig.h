@@ -20,7 +20,7 @@ const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 60 * 60 * 2;
 
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 const uint64_t MONEY_SUPPLY									 = UINT64_C(99948151623421337);
-const uint64_t FINAL_SUBSIDY_PER_MINUTE						 = UINT64_C(75000000);
+const uint64_t FINAL_SUBSIDY_PER_MINUTE						 = UINT64_C(1740000000);
 const unsigned EMISSION_SPEED_FACTOR                         = 18;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
