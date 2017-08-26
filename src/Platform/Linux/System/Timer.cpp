@@ -1,6 +1,19 @@
-// Copyright (c) 2011-2016 The Cryptonote developers
-// Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
+//
+// This file is part of Bytecoin.
+//
+// Bytecoin is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Bytecoin is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Timer.h"
 #include <cassert>
@@ -93,7 +106,7 @@ void Timer::sleep(std::chrono::nanoseconds duration) {
               timerContext->interrupted = true;
               dispatcher->pushContext(timerContext->context);
             } else {
-              throw std::runtime_error("Timer::interrupt, read failed, "  + lastErrorMessage());
+              throw std::runtime_error("Timer::sleep, interrupt procedure, read failed, "  + lastErrorMessage());
             }
           } else {
             assert(value>0);
@@ -101,11 +114,11 @@ void Timer::sleep(std::chrono::nanoseconds duration) {
           }
 
           epoll_event timerEvent;
-          timerEvent.events = 0;
+          timerEvent.events = EPOLLONESHOT;
           timerEvent.data.ptr = nullptr;
 
           if (epoll_ctl(dispatcher->getEpoll(), EPOLL_CTL_MOD, timer, &timerEvent) == -1) {
-            throw std::runtime_error("Timer::interrupt, epoll_ctl failed, " + lastErrorMessage());
+            throw std::runtime_error("Timer::sleep, interrupt procedure, epoll_ctl failed, " + lastErrorMessage());
           }
         }
     };

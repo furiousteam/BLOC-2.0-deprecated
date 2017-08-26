@@ -1,8 +1,14 @@
 .DS_Store
-/build
+build
+.vs
+CMakeFiles
+*.dir
+*.vcxproj
+*.filters
 /tags
 .idea
 .ycm_extra_conf.py
 .ycm_extra_conf.pyc
 Release
 Debug
+x64
