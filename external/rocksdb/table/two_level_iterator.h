@@ -1,7 +1,7 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 //
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -23,8 +23,9 @@ struct TwoLevelIteratorState {
       : check_prefix_may_match(_check_prefix_may_match) {}
 
   virtual ~TwoLevelIteratorState() {}
-  virtual Iterator* NewSecondaryIterator(const Slice& handle) = 0;
+  virtual InternalIterator* NewSecondaryIterator(const Slice& handle) = 0;
   virtual bool PrefixMayMatch(const Slice& internal_key) = 0;
+  virtual bool KeyReachedUpperBound(const Slice& internal_key) = 0;
 
   // If call PrefixMayMatch()
   bool check_prefix_may_match;
@@ -45,9 +46,8 @@ struct TwoLevelIteratorState {
 //        all the states but those allocated in arena.
 // need_free_iter_and_state: free `state` and `first_level_iter` if
 //                           true. Otherwise, just call destructor.
-extern Iterator* NewTwoLevelIterator(TwoLevelIteratorState* state,
-                                     Iterator* first_level_iter,
-                                     Arena* arena = nullptr,
-                                     bool need_free_iter_and_state = true);
+extern InternalIterator* NewTwoLevelIterator(
+    TwoLevelIteratorState* state, InternalIterator* first_level_iter,
+    Arena* arena = nullptr, bool need_free_iter_and_state = true);
 
 }  // namespace rocksdb

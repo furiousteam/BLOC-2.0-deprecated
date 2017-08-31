@@ -27,50 +27,12 @@ namespace rocksdb {
 // }
 typedef std::map<std::string, std::string> UserCollectedProperties;
 
-// TableProperties contains a bunch of read-only properties of its associated
-// table.
-struct TableProperties {
- public:
-  // the total size of all data blocks.
-  uint64_t data_size = 0;
-  // the size of index block.
-  uint64_t index_size = 0;
-  // the size of filter block.
-  uint64_t filter_size = 0;
-  // total raw key size
-  uint64_t raw_key_size = 0;
-  // total raw value size
-  uint64_t raw_value_size = 0;
-  // the number of blocks in this table
-  uint64_t num_data_blocks = 0;
-  // the number of entries in this table
-  uint64_t num_entries = 0;
-  // format version, reserved for backward compatibility
-  uint64_t format_version = 0;
-  // If 0, key is variable length. Otherwise number of bytes for each key.
-  uint64_t fixed_key_len = 0;
-
-  // The name of the filter policy used in this table.
-  // If no filter policy is used, `filter_policy_name` will be an empty string.
-  std::string filter_policy_name;
-
-  // user collected properties
-  UserCollectedProperties user_collected_properties;
-
-  // convert this object to a human readable form
-  //   @prop_delim: delimiter for each property.
-  std::string ToString(const std::string& prop_delim = "; ",
-                       const std::string& kv_delim = "=") const;
-
-  // Aggregate the numerical member variables of the specified
-  // TableProperties.
-  void Add(const TableProperties& tp);
-};
-
 // table properties' human-readable names in the property block.
 struct TablePropertiesNames {
   static const std::string kDataSize;
   static const std::string kIndexSize;
+  static const std::string kIndexPartitions;
+  static const std::string kTopLevelIndexSize;
   static const std::string kFilterSize;
   static const std::string kRawKeySize;
   static const std::string kRawValueSize;
@@ -79,9 +41,19 @@ struct TablePropertiesNames {
   static const std::string kFormatVersion;
   static const std::string kFixedKeyLen;
   static const std::string kFilterPolicy;
+  static const std::string kColumnFamilyName;
+  static const std::string kColumnFamilyId;
+  static const std::string kComparator;
+  static const std::string kMergeOperator;
+  static const std::string kPrefixExtractorName;
+  static const std::string kPropertyCollectors;
+  static const std::string kCompression;
+  static const std::string kCreationTime;
 };
 
 extern const std::string kPropertiesBlock;
+extern const std::string kCompressionDictBlock;
+extern const std::string kRangeDelBlock;
 
 enum EntryType {
   kEntryPut,
@@ -106,7 +78,7 @@ class TablePropertiesCollector {
   // Add() will be called when a new key/value pair is inserted into the table.
   // @params key    the user key that is inserted into the table.
   // @params value  the value that is inserted into the table.
-  virtual Status Add(const Slice& key, const Slice& value) {
+  virtual Status Add(const Slice& /*key*/, const Slice& /*value*/) {
     return Status::InvalidArgument(
         "TablePropertiesCollector::Add() deprecated.");
   }
@@ -115,10 +87,9 @@ class TablePropertiesCollector {
   // table.
   // @params key    the user key that is inserted into the table.
   // @params value  the value that is inserted into the table.
-  // @params file_size  file size up to now
   virtual Status AddUserKey(const Slice& key, const Slice& value,
-                            EntryType type, SequenceNumber seq,
-                            uint64_t file_size) {
+                            EntryType /*type*/, SequenceNumber /*seq*/,
+                            uint64_t /*file_size*/) {
     // For backwards-compatibility.
     return Add(key, value);
   }
@@ -144,12 +115,96 @@ class TablePropertiesCollector {
 // TablePropertiesCollector for each new table
 class TablePropertiesCollectorFactory {
  public:
+  struct Context {
+    uint32_t column_family_id;
+    static const uint32_t kUnknownColumnFamily;
+  };
+
   virtual ~TablePropertiesCollectorFactory() {}
   // has to be thread-safe
-  virtual TablePropertiesCollector* CreateTablePropertiesCollector() = 0;
+  virtual TablePropertiesCollector* CreateTablePropertiesCollector(
+      TablePropertiesCollectorFactory::Context context) = 0;
 
   // The name of the properties collector can be used for debugging purpose.
   virtual const char* Name() const = 0;
+};
+
+// TableProperties contains a bunch of read-only properties of its associated
+// table.
+struct TableProperties {
+ public:
+  // the total size of all data blocks.
+  uint64_t data_size = 0;
+  // the size of index block.
+  uint64_t index_size = 0;
+  // Total number of index partitions if kTwoLevelIndexSearch is used
+  uint64_t index_partitions = 0;
+  // Size of the top-level index if kTwoLevelIndexSearch is used
+  uint64_t top_level_index_size = 0;
+  // the size of filter block.
+  uint64_t filter_size = 0;
+  // total raw key size
+  uint64_t raw_key_size = 0;
+  // total raw value size
+  uint64_t raw_value_size = 0;
+  // the number of blocks in this table
+  uint64_t num_data_blocks = 0;
+  // the number of entries in this table
+  uint64_t num_entries = 0;
+  // format version, reserved for backward compatibility
+  uint64_t format_version = 0;
+  // If 0, key is variable length. Otherwise number of bytes for each key.
+  uint64_t fixed_key_len = 0;
+  // ID of column family for this SST file, corresponding to the CF identified
+  // by column_family_name.
+  uint64_t column_family_id =
+      rocksdb::TablePropertiesCollectorFactory::Context::kUnknownColumnFamily;
+  // The time when the SST file was created.
+  // Since SST files are immutable, this is equivalent to last modified time.
+  uint64_t creation_time = 0;
+
+  // Name of the column family with which this SST file is associated.
+  // If column family is unknown, `column_family_name` will be an empty string.
+  std::string column_family_name;
+
+  // The name of the filter policy used in this table.
+  // If no filter policy is used, `filter_policy_name` will be an empty string.
+  std::string filter_policy_name;
+
+  // The name of the comparator used in this table.
+  std::string comparator_name;
+
+  // The name of the merge operator used in this table.
+  // If no merge operator is used, `merge_operator_name` will be "nullptr".
+  std::string merge_operator_name;
+
+  // The name of the prefix extractor used in this table
+  // If no prefix extractor is used, `prefix_extractor_name` will be "nullptr".
+  std::string prefix_extractor_name;
+
+  // The names of the property collectors factories used in this table
+  // separated by commas
+  // {collector_name[1]},{collector_name[2]},{collector_name[3]} ..
+  std::string property_collectors_names;
+
+  // The compression algo used to compress the SST files.
+  std::string compression_name;
+
+  // user collected properties
+  UserCollectedProperties user_collected_properties;
+  UserCollectedProperties readable_properties;
+
+  // The offset of the value of each property in the file.
+  std::map<std::string, uint64_t> properties_offsets;
+
+  // convert this object to a human readable form
+  //   @prop_delim: delimiter for each property.
+  std::string ToString(const std::string& prop_delim = "; ",
+                       const std::string& kv_delim = "=") const;
+
+  // Aggregate the numerical member variables of the specified
+  // TableProperties.
+  void Add(const TableProperties& tp);
 };
 
 // Extra properties
@@ -157,5 +212,7 @@ class TablePropertiesCollectorFactory {
 // itself. Especially some properties regarding to the internal keys (which
 // is unknown to `table`).
 extern uint64_t GetDeletedKeys(const UserCollectedProperties& props);
+extern uint64_t GetMergeOperands(const UserCollectedProperties& props,
+                                 bool* property_present);
 
 }  // namespace rocksdb

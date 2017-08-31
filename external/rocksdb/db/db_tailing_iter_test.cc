@@ -1,7 +1,7 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 //
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -10,11 +10,11 @@
 // Introduction of SyncPoint effectively disabled building and running this test
 // in Release build.
 // which is a pity, it is a good test
-#if !(defined NDEBUG) || !defined(OS_WIN)
+#if !defined(ROCKSDB_LITE)
 
+#include "db/db_test_util.h"
 #include "db/forward_iterator.h"
 #include "port/stack_trace.h"
-#include "util/db_test_util.h"
 
 namespace rocksdb {
 
@@ -126,6 +126,7 @@ TEST_F(DBTestTailingIterator, TailingIteratorTrimSeekToNext) {
   options.write_buffer_size = k150KB;
   options.max_write_buffer_number = 3;
   options.min_write_buffer_number_to_merge = 2;
+  options.env = env_;
   CreateAndReopenWithCF({"pikachu"}, options);
   ReadOptions read_options;
   read_options.tailing = true;
@@ -140,6 +141,8 @@ TEST_F(DBTestTailingIterator, TailingIteratorTrimSeekToNext) {
   std::unique_ptr<Iterator> iterh(db_->NewIterator(read_options, handles_[1]));
   std::string value(1024, 'a');
   bool file_iters_deleted = false;
+  bool file_iters_renewed_null = false;
+  bool file_iters_renewed_copy = false;
   rocksdb::SyncPoint::GetInstance()->SetCallBack(
       "ForwardIterator::SeekInternal:Return", [&](void* arg) {
         ForwardIterator* fiter = reinterpret_cast<ForwardIterator*>(arg);
@@ -152,6 +155,12 @@ TEST_F(DBTestTailingIterator, TailingIteratorTrimSeekToNext) {
         ASSERT_TRUE(!file_iters_deleted ||
                     fiter->TEST_CheckDeletedIters(&deleted_iters, &num_iters));
       });
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "ForwardIterator::RenewIterators:Null",
+      [&](void* arg) { file_iters_renewed_null = true; });
+  rocksdb::SyncPoint::GetInstance()->SetCallBack(
+      "ForwardIterator::RenewIterators:Copy",
+      [&](void* arg) { file_iters_renewed_copy = true; });
   rocksdb::SyncPoint::GetInstance()->EnableProcessing();
   const int num_records = 1000;
   for (int i = 1; i < num_records; ++i) {
@@ -160,7 +169,7 @@ TEST_F(DBTestTailingIterator, TailingIteratorTrimSeekToNext) {
     char buf3[32];
     char buf4[32];
     snprintf(buf1, sizeof(buf1), "00a0%016d", i * 5);
-    snprintf(buf3, sizeof(buf1), "00b0%016d", i * 5);
+    snprintf(buf3, sizeof(buf3), "00b0%016d", i * 5);
 
     Slice key(buf1, 20);
     ASSERT_OK(Put(1, key, value));
@@ -173,7 +182,7 @@ TEST_F(DBTestTailingIterator, TailingIteratorTrimSeekToNext) {
       if (i == 299) {
         file_iters_deleted = true;
       }
-      snprintf(buf4, sizeof(buf1), "00a0%016d", i * 5 / 2);
+      snprintf(buf4, sizeof(buf4), "00a0%016d", i * 5 / 2);
       Slice target(buf4, 20);
       iterh->Seek(target);
       ASSERT_TRUE(iter->Valid());
@@ -203,6 +212,8 @@ TEST_F(DBTestTailingIterator, TailingIteratorTrimSeekToNext) {
     ASSERT_LE(num_iters, 1);
     file_iters_deleted = false;
   }
+  ASSERT_TRUE(file_iters_renewed_null);
+  ASSERT_TRUE(file_iters_renewed_copy);
   iter = 0;
   itern = 0;
   iterh = 0;
@@ -284,17 +295,15 @@ TEST_F(DBTestTailingIterator, TailingIteratorDeletes) {
 }
 
 TEST_F(DBTestTailingIterator, TailingIteratorPrefixSeek) {
-  XFUNC_TEST("", "dbtest_prefix", prefix_skip1, XFuncPoint::SetSkip,
-             kSkipNoPrefix);
   ReadOptions read_options;
   read_options.tailing = true;
 
   Options options = CurrentOptions();
-  options.env = env_;
   options.create_if_missing = true;
   options.disable_auto_compactions = true;
   options.prefix_extractor.reset(NewFixedPrefixTransform(2));
   options.memtable_factory.reset(NewHashSkipListRepFactory(16));
+  options.allow_concurrent_memtable_write = false;
   DestroyAndReopen(options);
   CreateAndReopenWithCF({"pikachu"}, options);
 
@@ -315,7 +324,6 @@ TEST_F(DBTestTailingIterator, TailingIteratorPrefixSeek) {
 
   iter->Next();
   ASSERT_TRUE(!iter->Valid());
-  XFUNC_TEST("", "dbtest_prefix", prefix_skip1, XFuncPoint::SetSkip, 0);
 }
 
 TEST_F(DBTestTailingIterator, TailingIteratorIncomplete) {
@@ -416,6 +424,59 @@ TEST_F(DBTestTailingIterator, TailingIteratorUpperBound) {
 
   ASSERT_FALSE(it->Valid());
   ASSERT_EQ(0, immutable_seeks);
+}
+
+TEST_F(DBTestTailingIterator, TailingIteratorGap) {
+  // level 1:            [20, 25]  [35, 40]
+  // level 2:  [10 - 15]                    [45 - 50]
+  // level 3:            [20,    30,    40]
+  // Previously there is a bug in tailing_iterator that if there is a gap in
+  // lower level, the key will be skipped if it is within the range between
+  // the largest key of index n file and the smallest key of index n+1 file
+  // if both file fit in that gap. In this example, 25 < key < 35
+  // https://github.com/facebook/rocksdb/issues/1372
+  CreateAndReopenWithCF({"pikachu"}, CurrentOptions());
+
+  ReadOptions read_options;
+  read_options.tailing = true;
+
+  ASSERT_OK(Put(1, "20", "20"));
+  ASSERT_OK(Put(1, "30", "30"));
+  ASSERT_OK(Put(1, "40", "40"));
+  ASSERT_OK(Flush(1));
+  MoveFilesToLevel(3, 1);
+
+  ASSERT_OK(Put(1, "10", "10"));
+  ASSERT_OK(Put(1, "15", "15"));
+  ASSERT_OK(Flush(1));
+  ASSERT_OK(Put(1, "45", "45"));
+  ASSERT_OK(Put(1, "50", "50"));
+  ASSERT_OK(Flush(1));
+  MoveFilesToLevel(2, 1);
+
+  ASSERT_OK(Put(1, "20", "20"));
+  ASSERT_OK(Put(1, "25", "25"));
+  ASSERT_OK(Flush(1));
+  ASSERT_OK(Put(1, "35", "35"));
+  ASSERT_OK(Put(1, "40", "40"));
+  ASSERT_OK(Flush(1));
+  MoveFilesToLevel(1, 1);
+
+  ColumnFamilyMetaData meta;
+  db_->GetColumnFamilyMetaData(handles_[1], &meta);
+
+  std::unique_ptr<Iterator> it(db_->NewIterator(read_options, handles_[1]));
+  it->Seek("30");
+  ASSERT_TRUE(it->Valid());
+  ASSERT_EQ("30", it->key().ToString());
+
+  it->Next();
+  ASSERT_TRUE(it->Valid());
+  ASSERT_EQ("35", it->key().ToString());
+
+  it->Next();
+  ASSERT_TRUE(it->Valid());
+  ASSERT_EQ("40", it->key().ToString());
 }
 
 TEST_F(DBTestTailingIterator, ManagedTailingIteratorSingle) {
@@ -550,18 +611,16 @@ TEST_F(DBTestTailingIterator, ManagedTailingIteratorDeletes) {
 }
 
 TEST_F(DBTestTailingIterator, ManagedTailingIteratorPrefixSeek) {
-  XFUNC_TEST("", "dbtest_prefix", prefix_skip1, XFuncPoint::SetSkip,
-             kSkipNoPrefix);
   ReadOptions read_options;
   read_options.tailing = true;
   read_options.managed = true;
 
   Options options = CurrentOptions();
-  options.env = env_;
   options.create_if_missing = true;
   options.disable_auto_compactions = true;
   options.prefix_extractor.reset(NewFixedPrefixTransform(2));
   options.memtable_factory.reset(NewHashSkipListRepFactory(16));
+  options.allow_concurrent_memtable_write = false;
   DestroyAndReopen(options);
   CreateAndReopenWithCF({"pikachu"}, options);
 
@@ -582,7 +641,6 @@ TEST_F(DBTestTailingIterator, ManagedTailingIteratorPrefixSeek) {
 
   iter->Next();
   ASSERT_TRUE(!iter->Valid());
-  XFUNC_TEST("", "dbtest_prefix", prefix_skip1, XFuncPoint::SetSkip, 0);
 }
 
 TEST_F(DBTestTailingIterator, ManagedTailingIteratorIncomplete) {
@@ -644,12 +702,109 @@ TEST_F(DBTestTailingIterator, ManagedTailingIteratorSeekToSame) {
   ASSERT_EQ(found, iter->key().ToString());
 }
 
+TEST_F(DBTestTailingIterator, ForwardIteratorVersionProperty) {
+  Options options = CurrentOptions();
+  options.write_buffer_size = 1000;
+
+  ReadOptions read_options;
+  read_options.tailing = true;
+
+  Put("foo", "bar");
+
+  uint64_t v1, v2, v3, v4;
+  {
+    std::unique_ptr<Iterator> iter(db_->NewIterator(read_options));
+    iter->Seek("foo");
+    std::string prop_value;
+    ASSERT_OK(iter->GetProperty("rocksdb.iterator.super-version-number",
+                                &prop_value));
+    v1 = static_cast<uint64_t>(std::atoi(prop_value.c_str()));
+
+    Put("foo1", "bar1");
+    Flush();
+
+    ASSERT_OK(iter->GetProperty("rocksdb.iterator.super-version-number",
+                                &prop_value));
+    v2 = static_cast<uint64_t>(std::atoi(prop_value.c_str()));
+
+    iter->Seek("f");
+
+    ASSERT_OK(iter->GetProperty("rocksdb.iterator.super-version-number",
+                                &prop_value));
+    v3 = static_cast<uint64_t>(std::atoi(prop_value.c_str()));
+
+    ASSERT_EQ(v1, v2);
+    ASSERT_GT(v3, v2);
+  }
+
+  {
+    std::unique_ptr<Iterator> iter(db_->NewIterator(read_options));
+    iter->Seek("foo");
+    std::string prop_value;
+    ASSERT_OK(iter->GetProperty("rocksdb.iterator.super-version-number",
+                                &prop_value));
+    v4 = static_cast<uint64_t>(std::atoi(prop_value.c_str()));
+  }
+  ASSERT_EQ(v3, v4);
+}
+
+TEST_F(DBTestTailingIterator, SeekWithUpperBoundBug) {
+  ReadOptions read_options;
+  read_options.tailing = true;
+  const Slice upper_bound("cc", 3);
+  read_options.iterate_upper_bound = &upper_bound;
+
+
+  // 1st L0 file
+  ASSERT_OK(db_->Put(WriteOptions(), "aa", "SEEN"));
+  ASSERT_OK(Flush());
+
+  // 2nd L0 file
+  ASSERT_OK(db_->Put(WriteOptions(), "zz", "NOT-SEEN"));
+  ASSERT_OK(Flush());
+
+  std::unique_ptr<Iterator> iter(db_->NewIterator(read_options));
+
+  iter->Seek("aa");
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().ToString(), "aa");
+}
+
+TEST_F(DBTestTailingIterator, SeekToFirstWithUpperBoundBug) {
+  ReadOptions read_options;
+  read_options.tailing = true;
+  const Slice upper_bound("cc", 3);
+  read_options.iterate_upper_bound = &upper_bound;
+
+
+  // 1st L0 file
+  ASSERT_OK(db_->Put(WriteOptions(), "aa", "SEEN"));
+  ASSERT_OK(Flush());
+
+  // 2nd L0 file
+  ASSERT_OK(db_->Put(WriteOptions(), "zz", "NOT-SEEN"));
+  ASSERT_OK(Flush());
+
+  std::unique_ptr<Iterator> iter(db_->NewIterator(read_options));
+
+  iter->SeekToFirst();
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().ToString(), "aa");
+
+  iter->Next();
+  ASSERT_FALSE(iter->Valid());
+
+  iter->SeekToFirst();
+  ASSERT_TRUE(iter->Valid());
+  ASSERT_EQ(iter->key().ToString(), "aa");
+}
+
 }  // namespace rocksdb
 
-#endif  // !(defined NDEBUG) || !defined(OS_WIN)
+#endif  // !defined(ROCKSDB_LITE)
 
 int main(int argc, char** argv) {
-#if !(defined NDEBUG) || !defined(OS_WIN)
+#if !defined(ROCKSDB_LITE)
   rocksdb::port::InstallStackTraceHandler();
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

@@ -1,12 +1,7 @@
-/*
- *  Copyright (c) 2014, Facebook, Inc.
- *  All rights reserved.
- *
- *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant
- *  of patent rights can be found in the PATENTS file in the same directory.
- *
- */
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 
 /*
  * This file defines FbsonJsonParserT (template) and FbsonJsonParser.
@@ -40,7 +35,7 @@
  * string to an id, and store the dictionary id in FBSON to save space. The
  * purpose of using an external dictionary is more towards a collection of
  * documents (which has common keys) rather than a single document, so that
- * space saving will be siginificant.
+ * space saving will be significant.
  *
  * ** Endianness **
  * Note: FBSON serialization doesn't assume endianness of the server. However
@@ -567,7 +562,7 @@ class FbsonJsonParserT {
         ++precision;
       } else if (ch == '.') {
         // note we don't pop out '.'
-        return parseDouble(in, val, precision, sign);
+        return parseDouble(in, static_cast<double>(val), precision, sign);
       } else {
         err_ = FbsonErrType::E_INVALID_DECIMAL;
         return false;
@@ -578,7 +573,7 @@ class FbsonJsonParserT {
       // if the number overflows int64_t, first parse it as double iff we see a
       // decimal point later. Otherwise, will treat it as overflow
       if (val < 0 && val > std::numeric_limits<int64_t>::min()) {
-        return parseDouble(in, (uint64_t)val, precision, sign);
+        return parseDouble(in, static_cast<double>(val), precision, sign);
       }
 
       ch = in.peek();

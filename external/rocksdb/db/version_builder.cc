@@ -1,7 +1,7 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 //
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -16,6 +16,7 @@
 #include <inttypes.h>
 #include <algorithm>
 #include <atomic>
+#include <functional>
 #include <set>
 #include <thread>
 #include <unordered_map>
@@ -27,16 +28,17 @@
 #include "db/internal_stats.h"
 #include "db/table_cache.h"
 #include "db/version_set.h"
+#include "port/port.h"
 #include "table/table_reader.h"
 
 namespace rocksdb {
 
 bool NewestFirstBySeqNo(FileMetaData* a, FileMetaData* b) {
-  if (a->smallest_seqno != b->smallest_seqno) {
-    return a->smallest_seqno > b->smallest_seqno;
-  }
   if (a->largest_seqno != b->largest_seqno) {
     return a->largest_seqno > b->largest_seqno;
+  }
+  if (a->smallest_seqno != b->smallest_seqno) {
+    return a->smallest_seqno > b->smallest_seqno;
   }
   // Break ties by file number
   return a->fd.GetNumber() > b->fd.GetNumber();
@@ -82,6 +84,7 @@ class VersionBuilder::Rep {
   };
 
   const EnvOptions& env_options_;
+  Logger* info_log_;
   TableCache* table_cache_;
   VersionStorageInfo* base_vstorage_;
   LevelState* levels_;
@@ -89,9 +92,10 @@ class VersionBuilder::Rep {
   FileComparator level_nonzero_cmp_;
 
  public:
-  Rep(const EnvOptions& env_options, TableCache* table_cache,
+  Rep(const EnvOptions& env_options, Logger* info_log, TableCache* table_cache,
       VersionStorageInfo* base_vstorage)
       : env_options_(env_options),
+        info_log_(info_log),
         table_cache_(table_cache),
         base_vstorage_(base_vstorage) {
     levels_ = new LevelState[base_vstorage_->num_levels()];
@@ -125,7 +129,13 @@ class VersionBuilder::Rep {
   }
 
   void CheckConsistency(VersionStorageInfo* vstorage) {
-#ifndef NDEBUG
+#ifdef NDEBUG
+    if (!vstorage->force_consistency_checks()) {
+      // Dont run consistency checks in release mode except if
+      // explicitly asked to
+      return;
+    }
+#endif
     // make sure the files are sorted correctly
     for (int level = 0; level < vstorage->num_levels(); level++) {
       auto& level_files = vstorage->LevelFiles(level);
@@ -133,34 +143,63 @@ class VersionBuilder::Rep {
         auto f1 = level_files[i - 1];
         auto f2 = level_files[i];
         if (level == 0) {
-          assert(level_zero_cmp_(f1, f2));
-          assert(f1->largest_seqno > f2->largest_seqno);
+          if (!level_zero_cmp_(f1, f2)) {
+            fprintf(stderr, "L0 files are not sorted properly");
+            abort();
+          }
+
+          if (f2->smallest_seqno == f2->largest_seqno) {
+            // This is an external file that we ingested
+            SequenceNumber external_file_seqno = f2->smallest_seqno;
+            if (!(external_file_seqno < f1->largest_seqno ||
+                  external_file_seqno == 0)) {
+              fprintf(stderr, "L0 file with seqno %" PRIu64 " %" PRIu64
+                              " vs. file with global_seqno %" PRIu64 "\n",
+                      f1->smallest_seqno, f1->largest_seqno,
+                      external_file_seqno);
+              abort();
+            }
+          } else if (f1->smallest_seqno <= f2->smallest_seqno) {
+            fprintf(stderr, "L0 files seqno %" PRIu64 " %" PRIu64
+                            " vs. %" PRIu64 " %" PRIu64 "\n",
+                    f1->smallest_seqno, f1->largest_seqno, f2->smallest_seqno,
+                    f2->largest_seqno);
+            abort();
+          }
         } else {
-          assert(level_nonzero_cmp_(f1, f2));
+          if (!level_nonzero_cmp_(f1, f2)) {
+            fprintf(stderr, "L%d files are not sorted properly", level);
+            abort();
+          }
 
           // Make sure there is no overlap in levels > 0
           if (vstorage->InternalComparator()->Compare(f1->largest,
                                                       f2->smallest) >= 0) {
-            fprintf(stderr, "overlapping ranges in same level %s vs. %s\n",
-                    (f1->largest).DebugString().c_str(),
-                    (f2->smallest).DebugString().c_str());
+            fprintf(stderr, "L%d have overlapping ranges %s vs. %s\n", level,
+                    (f1->largest).DebugString(true).c_str(),
+                    (f2->smallest).DebugString(true).c_str());
             abort();
           }
         }
       }
     }
-#endif
   }
 
   void CheckConsistencyForDeletes(VersionEdit* edit, uint64_t number,
                                   int level) {
-#ifndef NDEBUG
+#ifdef NDEBUG
+    if (!base_vstorage_->force_consistency_checks()) {
+      // Dont run consistency checks in release mode except if
+      // explicitly asked to
+      return;
+    }
+#endif
     // a file to be deleted better exist in the previous version
     bool found = false;
     for (int l = 0; !found && l < base_vstorage_->num_levels(); l++) {
       const std::vector<FileMetaData*>& base_files =
           base_vstorage_->LevelFiles(l);
-      for (unsigned int i = 0; i < base_files.size(); i++) {
+      for (size_t i = 0; i < base_files.size(); i++) {
         FileMetaData* f = base_files[i];
         if (f->fd.GetNumber() == number) {
           found = true;
@@ -190,9 +229,8 @@ class VersionBuilder::Rep {
     }
     if (!found) {
       fprintf(stderr, "not found %" PRIu64 "\n", number);
+      abort();
     }
-    assert(found);
-#endif
   }
 
   // Apply all of the edits in *edit to the current state.
@@ -282,7 +320,8 @@ class VersionBuilder::Rep {
     CheckConsistency(vstorage);
   }
 
-  void LoadTableHandlers(InternalStats* internal_stats, int max_threads) {
+  void LoadTableHandlers(InternalStats* internal_stats, int max_threads,
+                         bool prefetch_index_and_filter_in_cache) {
     assert(table_cache_ != nullptr);
     // <file metadata, level>
     std::vector<std::pair<FileMetaData*, int>> files_meta;
@@ -308,7 +347,8 @@ class VersionBuilder::Rep {
                                 *(base_vstorage_->InternalComparator()),
                                 file_meta->fd, &file_meta->table_reader_handle,
                                 false /*no_io */, true /* record_read_stats */,
-                                internal_stats->GetFileReadHist(level));
+                                internal_stats->GetFileReadHist(level), false,
+                                level, prefetch_index_and_filter_in_cache);
         if (file_meta->table_reader_handle != nullptr) {
           // Load table_reader
           file_meta->fd.table_reader = table_cache_->GetTableReaderFromHandle(
@@ -320,7 +360,7 @@ class VersionBuilder::Rep {
     if (max_threads <= 1) {
       load_handlers_func();
     } else {
-      std::vector<std::thread> threads;
+      std::vector<port::Thread> threads;
       for (int i = 0; i < max_threads; i++) {
         threads.emplace_back(load_handlers_func);
       }
@@ -333,17 +373,19 @@ class VersionBuilder::Rep {
 
   void MaybeAddFile(VersionStorageInfo* vstorage, int level, FileMetaData* f) {
     if (levels_[level].deleted_files.count(f->fd.GetNumber()) > 0) {
-      // File is deleted: do nothing
+      // f is to-be-delected table file
+      vstorage->RemoveCurrentStats(f);
     } else {
-      vstorage->AddFile(level, f);
+      vstorage->AddFile(level, f, info_log_);
     }
   }
 };
 
 VersionBuilder::VersionBuilder(const EnvOptions& env_options,
                                TableCache* table_cache,
-                               VersionStorageInfo* base_vstorage)
-    : rep_(new Rep(env_options, table_cache, base_vstorage)) {}
+                               VersionStorageInfo* base_vstorage,
+                               Logger* info_log)
+    : rep_(new Rep(env_options, info_log, table_cache, base_vstorage)) {}
 VersionBuilder::~VersionBuilder() { delete rep_; }
 void VersionBuilder::CheckConsistency(VersionStorageInfo* vstorage) {
   rep_->CheckConsistency(vstorage);
@@ -356,9 +398,11 @@ void VersionBuilder::Apply(VersionEdit* edit) { rep_->Apply(edit); }
 void VersionBuilder::SaveTo(VersionStorageInfo* vstorage) {
   rep_->SaveTo(vstorage);
 }
-void VersionBuilder::LoadTableHandlers(InternalStats* internal_stats,
-                                       int max_threads) {
-  rep_->LoadTableHandlers(internal_stats, max_threads);
+void VersionBuilder::LoadTableHandlers(
+    InternalStats* internal_stats, int max_threads,
+    bool prefetch_index_and_filter_in_cache) {
+  rep_->LoadTableHandlers(internal_stats, max_threads,
+                          prefetch_index_and_filter_in_cache);
 }
 void VersionBuilder::MaybeAddFile(VersionStorageInfo* vstorage, int level,
                                   FileMetaData* f) {

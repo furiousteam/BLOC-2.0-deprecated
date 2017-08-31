@@ -1,7 +1,7 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 //
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -39,69 +39,55 @@ void gettimeofday(struct timeval* tv, struct timezone* /* tz */) {
 
   seconds secNow(duration_cast<seconds>(usNow));
 
-  tv->tv_sec = secNow.count();
-  tv->tv_usec = usNow.count() - duration_cast<microseconds>(secNow).count();
+  tv->tv_sec = static_cast<long>(secNow.count());
+  tv->tv_usec = static_cast<long>(usNow.count() -
+      duration_cast<microseconds>(secNow).count());
 }
-
-Mutex::Mutex(bool adaptive) : lock(m_mutex, std::defer_lock) {}
 
 Mutex::~Mutex() {}
-
-void Mutex::Lock() {
-  lock.lock();
-#ifndef NDEBUG
-  locked_ = true;
-#endif
-}
-
-void Mutex::Unlock() {
-#ifndef NDEBUG
-  locked_ = false;
-#endif
-  lock.unlock();
-}
-
-void Mutex::AssertHeld() {
-#ifndef NDEBUG
-  assert(locked_);
-#endif
-}
-
-CondVar::CondVar(Mutex* mu) : mu_(mu) {}
 
 CondVar::~CondVar() {}
 
 void CondVar::Wait() {
+  // Caller must ensure that mutex is held prior to calling this method
+  std::unique_lock<std::mutex> lk(mu_->getLock(), std::adopt_lock);
 #ifndef NDEBUG
   mu_->locked_ = false;
 #endif
-  cv_.wait(mu_->getLock());
+  cv_.wait(lk);
 #ifndef NDEBUG
   mu_->locked_ = true;
 #endif
+  // Release ownership of the lock as we don't want it to be unlocked when
+  // it goes out of scope (as we adopted the lock and didn't lock it ourselves)
+  lk.release();
 }
 
 bool CondVar::TimedWait(uint64_t abs_time_us) {
-#ifndef NDEBUG
-  mu_->locked_ = false;
-#endif
 
   using namespace std::chrono;
 
   // MSVC++ library implements wait_until in terms of wait_for so
-  // there is not an absolute wait anyway.
+  // we need to convert absolute wait into relative wait.
   microseconds usAbsTime(abs_time_us);
 
   microseconds usNow(
-      duration_cast<microseconds>(system_clock::now().time_since_epoch()));
+    duration_cast<microseconds>(system_clock::now().time_since_epoch()));
   microseconds relTimeUs =
-      (usAbsTime > usNow) ? (usAbsTime - usNow) : microseconds::zero();
+    (usAbsTime > usNow) ? (usAbsTime - usNow) : microseconds::zero();
 
-  std::cv_status cvStatus = cv_.wait_for(mu_->getLock(), relTimeUs);
-
+  // Caller must ensure that mutex is held prior to calling this method
+  std::unique_lock<std::mutex> lk(mu_->getLock(), std::adopt_lock);
+#ifndef NDEBUG
+  mu_->locked_ = false;
+#endif
+  std::cv_status cvStatus = cv_.wait_for(lk, relTimeUs);
 #ifndef NDEBUG
   mu_->locked_ = true;
 #endif
+  // Release ownership of the lock as we don't want it to be unlocked when
+  // it goes out of scope (as we adopted the lock and didn't lock it ourselves)
+  lk.release();
 
   if (cvStatus == std::cv_status::timeout) {
     return true;
@@ -114,8 +100,10 @@ void CondVar::Signal() { cv_.notify_one(); }
 
 void CondVar::SignalAll() { cv_.notify_all(); }
 
+int PhysicalCoreID() { return GetCurrentProcessorNumber(); }
+
 void InitOnce(OnceType* once, void (*initializer)()) {
-  std::call_once(*once, initializer);
+  std::call_once(once->flag_, initializer);
 }
 
 // Private structure, exposed only by pointer
@@ -154,7 +142,7 @@ DIR* opendir(const char* name) {
     return nullptr;
   }
 
-  strncpy_s(dir->entry_.d_name, dir->data_.name, strlen(dir->data_.name));
+  strcpy_s(dir->entry_.d_name, sizeof(dir->entry_.d_name), dir->data_.name);
 
   return dir.release();
 }
@@ -176,7 +164,7 @@ struct dirent* readdir(DIR* dirp) {
     return nullptr;
   }
 
-  strncpy_s(dirp->entry_.d_name, dirp->data_.name, strlen(dirp->data_.name));
+  strcpy_s(dirp->entry_.d_name, sizeof(dirp->entry_.d_name), dirp->data_.name);
 
   return &dirp->entry_;
 }
@@ -245,6 +233,8 @@ int GetMaxOpenFiles() { return -1; }
 
 #include "jemalloc/jemalloc.h"
 
+#ifndef JEMALLOC_NON_INIT
+
 namespace rocksdb {
 
 namespace port {
@@ -289,6 +279,8 @@ JEMALLOC_SECTION(".CRT$XCT") JEMALLOC_ATTR(used) static const void(
 #endif  // _WIN64
 
 }  // extern "C"
+
+#endif // JEMALLOC_NON_INIT
 
 // Global operators to be replaced by a linker
 

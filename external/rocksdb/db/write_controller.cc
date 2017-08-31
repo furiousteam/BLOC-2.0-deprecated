@@ -1,12 +1,13 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 
 #include "db/write_controller.h"
 
 #include <atomic>
 #include <cassert>
+#include <ratio>
 #include "rocksdb/env.h"
 
 namespace rocksdb {
@@ -16,25 +17,36 @@ std::unique_ptr<WriteControllerToken> WriteController::GetStopToken() {
   return std::unique_ptr<WriteControllerToken>(new StopWriteToken(this));
 }
 
-std::unique_ptr<WriteControllerToken> WriteController::GetDelayToken() {
-  if (total_delayed_++ == 0) {
-    last_refill_time_ = 0;
-    bytes_left_ = 0;
-  }
+std::unique_ptr<WriteControllerToken> WriteController::GetDelayToken(
+    uint64_t write_rate) {
+  total_delayed_++;
+  // Reset counters.
+  last_refill_time_ = 0;
+  bytes_left_ = 0;
+  set_delayed_write_rate(write_rate);
   return std::unique_ptr<WriteControllerToken>(new DelayWriteToken(this));
 }
 
-bool WriteController::IsStopped() const { return total_stopped_ > 0; }
-// Tihs is inside DB mutex, so we can't sleep and need to minimize
+std::unique_ptr<WriteControllerToken>
+WriteController::GetCompactionPressureToken() {
+  ++total_compaction_pressure_;
+  return std::unique_ptr<WriteControllerToken>(
+      new CompactionPressureToken(this));
+}
+
+bool WriteController::IsStopped() const {
+  return total_stopped_.load(std::memory_order_relaxed) > 0;
+}
+// This is inside DB mutex, so we can't sleep and need to minimize
 // frequency to get time.
 // If it turns out to be a performance issue, we can redesign the thread
 // synchronization model here.
 // The function trust caller will sleep micros returned.
 uint64_t WriteController::GetDelay(Env* env, uint64_t num_bytes) {
-  if (total_stopped_ > 0) {
+  if (total_stopped_.load(std::memory_order_relaxed) > 0) {
     return 0;
   }
-  if (total_delayed_ == 0) {
+  if (total_delayed_.load(std::memory_order_relaxed) == 0) {
     return 0;
   }
 
@@ -47,7 +59,7 @@ uint64_t WriteController::GetDelay(Env* env, uint64_t num_bytes) {
   }
   // The frequency to get time inside DB mutex is less than one per refill
   // interval.
-  auto time_now = env->NowMicros();
+  auto time_now = NowMicrosMonotonic(env);
 
   uint64_t sleep_debt = 0;
   uint64_t time_since_last_refill = 0;
@@ -94,6 +106,10 @@ uint64_t WriteController::GetDelay(Env* env, uint64_t num_bytes) {
   return sleep_amount;
 }
 
+uint64_t WriteController::NowMicrosMonotonic(Env* env) {
+  return env->NowNanos() / std::milli::den;
+}
+
 StopWriteToken::~StopWriteToken() {
   assert(controller_->total_stopped_ >= 1);
   --controller_->total_stopped_;
@@ -101,7 +117,12 @@ StopWriteToken::~StopWriteToken() {
 
 DelayWriteToken::~DelayWriteToken() {
   controller_->total_delayed_--;
-  assert(controller_->total_delayed_ >= 0);
+  assert(controller_->total_delayed_.load() >= 0);
+}
+
+CompactionPressureToken::~CompactionPressureToken() {
+  controller_->total_compaction_pressure_--;
+  assert(controller_->total_compaction_pressure_ >= 0);
 }
 
 }  // namespace rocksdb

@@ -1,7 +1,7 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 //
 
 #ifndef ROCKSDB_LITE
@@ -46,9 +46,8 @@ class GeoDBImpl : public GeoDB {
 
   // Returns a list of all items within a circular radius from the
   // specified gps location
-  virtual Status SearchRadial(const GeoPosition& pos, double radius,
-                              std::vector<GeoObject>* values,
-                              int number_of_values) override;
+  virtual GeoIterator* SearchRadial(const GeoPosition& pos, double radius,
+                                    int number_of_values) override;
 
  private:
   DB* db_;

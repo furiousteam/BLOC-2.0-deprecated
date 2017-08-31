@@ -1,7 +1,7 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 #ifndef ROCKSDB_LITE
 
 #include "rocksdb/utilities/json_document.h"
@@ -287,7 +287,6 @@ JSONDocument::Type JSONDocument::type() const {
       return JSONDocument::kArray;
 
     case fbson::FbsonType::T_Binary:
-      assert(false);
     default:
       assert(false);
   }
@@ -307,7 +306,7 @@ JSONDocument JSONDocument::operator[](const std::string& key) const {
   assert(foundValue != nullptr);
   // No need to save paths in const objects
   JSONDocument ans(foundValue, false);
-  return std::move(ans);
+  return ans;
 }
 
 size_t JSONDocument::Count() const {
@@ -330,7 +329,7 @@ JSONDocument JSONDocument::operator[](size_t i) const {
   auto arrayVal = reinterpret_cast<fbson::ArrayVal*>(value_);
   auto foundValue = arrayVal->get(static_cast<int>(i));
   JSONDocument ans(foundValue, false);
-  return std::move(ans);
+  return ans;
 }
 
 bool JSONDocument::IsNull() const {
@@ -588,8 +587,8 @@ JSONDocument::const_item_iterator::~const_item_iterator() {
 
 JSONDocument::const_item_iterator::value_type
   JSONDocument::const_item_iterator::operator*() {
-  return {std::string(it_->getKeyStr(), it_->klen()),
-    JSONDocument(it_->value(), false)};
+  return JSONDocument::const_item_iterator::value_type(std::string(it_->getKeyStr(), it_->klen()),
+    JSONDocument(it_->value(), false));
 }
 
 JSONDocument::ItemsIteratorGenerator::ItemsIteratorGenerator(

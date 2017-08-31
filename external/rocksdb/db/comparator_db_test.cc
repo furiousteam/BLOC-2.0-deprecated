@@ -1,16 +1,15 @@
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. See the AUTHORS file for names of contributors.
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 #include <map>
 #include <string>
 
+#include "memtable/stl_wrappers.h"
 #include "rocksdb/db.h"
 #include "rocksdb/env.h"
 #include "util/hash.h"
-#include "util/stl_wrappers.h"
+#include "util/kv_map.h"
 #include "util/string_util.h"
 #include "util/testharness.h"
 #include "util/testutil.h"
@@ -38,6 +37,10 @@ class KVIter : public Iterator {
   }
   virtual void Seek(const Slice& k) override {
     iter_ = map_->lower_bound(k.ToString());
+  }
+  virtual void SeekForPrev(const Slice& k) override {
+    iter_ = map_->upper_bound(k.ToString());
+    Prev();
   }
   virtual void Next() override { ++iter_; }
   virtual void Prev() override {

@@ -1,7 +1,7 @@
-//  Copyright (c) 2015, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 
 #pragma once
 #ifndef ROCKSDB_LITE
@@ -27,7 +27,7 @@ class TransactionDBMutex {
   // If returned status is OK, TransactionDB will eventually call UnLock().
   virtual Status Lock() = 0;
 
-  // Attempt to acquire lock.  If timeout is non-negative, operation should be
+  // Attempt to acquire lock.  If timeout is non-negative, operation may be
   // failed after this many microseconds.
   // Returns OK on success,
   //         TimedOut if timed out,

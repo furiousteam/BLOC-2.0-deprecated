@@ -1,7 +1,7 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 
 #ifndef ROCKSDB_LITE
 #include "db/forward_iterator.h"
@@ -10,15 +10,16 @@
 #include <string>
 #include <utility>
 
-#include "db/job_context.h"
+#include "db/column_family.h"
 #include "db/db_impl.h"
 #include "db/db_iter.h"
-#include "db/column_family.h"
+#include "db/dbformat.h"
+#include "db/job_context.h"
 #include "rocksdb/env.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/slice_transform.h"
-#include "table/merger.h"
-#include "db/dbformat.h"
+#include "table/merging_iterator.h"
+#include "util/string_util.h"
 #include "util/sync_point.h"
 
 namespace rocksdb {
@@ -28,13 +29,27 @@ namespace rocksdb {
 //     iter.SetFileIndex(file_index);
 //     iter.Seek(target);
 //     iter.Next()
-class LevelIterator : public Iterator {
+class LevelIterator : public InternalIterator {
  public:
   LevelIterator(const ColumnFamilyData* const cfd,
-      const ReadOptions& read_options,
-      const std::vector<FileMetaData*>& files)
-    : cfd_(cfd), read_options_(read_options), files_(files), valid_(false),
-      file_index_(std::numeric_limits<uint32_t>::max()) {}
+                const ReadOptions& read_options,
+                const std::vector<FileMetaData*>& files)
+      : cfd_(cfd),
+        read_options_(read_options),
+        files_(files),
+        valid_(false),
+        file_index_(std::numeric_limits<uint32_t>::max()),
+        file_iter_(nullptr),
+        pinned_iters_mgr_(nullptr) {}
+
+  ~LevelIterator() {
+    // Reset current pointer
+    if (pinned_iters_mgr_ && pinned_iters_mgr_->PinningEnabled()) {
+      pinned_iters_mgr_->PinIterator(file_iter_);
+    } else {
+      delete file_iter_;
+    }
+  }
 
   void SetFileIndex(uint32_t file_index) {
     assert(file_index < files_.size());
@@ -46,10 +61,27 @@ class LevelIterator : public Iterator {
   }
   void Reset() {
     assert(file_index_ < files_.size());
-    file_iter_.reset(cfd_->table_cache()->NewIterator(
+
+    // Reset current pointer
+    if (pinned_iters_mgr_ && pinned_iters_mgr_->PinningEnabled()) {
+      pinned_iters_mgr_->PinIterator(file_iter_);
+    } else {
+      delete file_iter_;
+    }
+
+    RangeDelAggregator range_del_agg(
+        cfd_->internal_comparator(), {} /* snapshots */);
+    file_iter_ = cfd_->table_cache()->NewIterator(
         read_options_, *(cfd_->soptions()), cfd_->internal_comparator(),
-        files_[file_index_]->fd, nullptr /* table_reader_ptr */, nullptr,
-        false));
+        files_[file_index_]->fd,
+        read_options_.ignore_range_deletions ? nullptr : &range_del_agg,
+        nullptr /* table_reader_ptr */, nullptr, false);
+    file_iter_->SetPinnedItersMgr(pinned_iters_mgr_);
+    if (!range_del_agg.IsEmpty()) {
+      status_ = Status::NotSupported(
+          "Range tombstones unsupported with ForwardIterator");
+      valid_ = false;
+    }
   }
   void SeekToLast() override {
     status_ = Status::NotSupported("LevelIterator::SeekToLast()");
@@ -71,6 +103,10 @@ class LevelIterator : public Iterator {
     assert(file_iter_ != nullptr);
     file_iter_->Seek(internal_key);
     valid_ = file_iter_->Valid();
+  }
+  void SeekForPrev(const Slice& internal_key) override {
+    status_ = Status::NotSupported("LevelIterator::SeekForPrev()");
+    valid_ = false;
   }
   void Next() override {
     assert(valid_);
@@ -104,6 +140,20 @@ class LevelIterator : public Iterator {
     }
     return Status::OK();
   }
+  bool IsKeyPinned() const override {
+    return pinned_iters_mgr_ && pinned_iters_mgr_->PinningEnabled() &&
+           file_iter_->IsKeyPinned();
+  }
+  bool IsValuePinned() const override {
+    return pinned_iters_mgr_ && pinned_iters_mgr_->PinningEnabled() &&
+           file_iter_->IsValuePinned();
+  }
+  void SetPinnedItersMgr(PinnedIteratorsManager* pinned_iters_mgr) override {
+    pinned_iters_mgr_ = pinned_iters_mgr;
+    if (file_iter_) {
+      file_iter_->SetPinnedItersMgr(pinned_iters_mgr_);
+    }
+  }
 
  private:
   const ColumnFamilyData* const cfd_;
@@ -113,7 +163,8 @@ class LevelIterator : public Iterator {
   bool valid_;
   uint32_t file_index_;
   Status status_;
-  std::unique_ptr<Iterator> file_iter_;
+  InternalIterator* file_iter_;
+  PinnedIteratorsManager* pinned_iters_mgr_;
 };
 
 ForwardIterator::ForwardIterator(DBImpl* db, const ReadOptions& read_options,
@@ -134,7 +185,8 @@ ForwardIterator::ForwardIterator(DBImpl* db, const ReadOptions& read_options,
       has_iter_trimmed_for_upper_bound_(false),
       current_over_upper_bound_(false),
       is_prev_set_(false),
-      is_prev_inclusive_(false) {
+      is_prev_inclusive_(false),
+      pinned_iters_mgr_(nullptr) {
   if (sv_) {
     RebuildIterators(false);
   }
@@ -144,38 +196,60 @@ ForwardIterator::~ForwardIterator() {
   Cleanup(true);
 }
 
+namespace {
+// Used in PinnedIteratorsManager to release pinned SuperVersion
+static void ReleaseSuperVersionFunc(void* sv) {
+  delete reinterpret_cast<SuperVersion*>(sv);
+}
+}  // namespace
+
+void ForwardIterator::SVCleanup() {
+  if (sv_ != nullptr && sv_->Unref()) {
+    // Job id == 0 means that this is not our background process, but rather
+    // user thread
+    JobContext job_context(0);
+    db_->mutex_.Lock();
+    sv_->Cleanup();
+    db_->FindObsoleteFiles(&job_context, false, true);
+    if (read_options_.background_purge_on_iterator_cleanup) {
+      db_->ScheduleBgLogWriterClose(&job_context);
+    }
+    db_->mutex_.Unlock();
+    if (pinned_iters_mgr_ && pinned_iters_mgr_->PinningEnabled()) {
+      pinned_iters_mgr_->PinPtr(sv_, &ReleaseSuperVersionFunc);
+    } else {
+      delete sv_;
+    }
+    if (job_context.HaveSomethingToDelete()) {
+      db_->PurgeObsoleteFiles(
+          job_context, read_options_.background_purge_on_iterator_cleanup);
+    }
+    job_context.Clean();
+  }
+}
+
 void ForwardIterator::Cleanup(bool release_sv) {
   if (mutable_iter_ != nullptr) {
-    mutable_iter_->~Iterator();
+    DeleteIterator(mutable_iter_, true /* is_arena */);
   }
+
   for (auto* m : imm_iters_) {
-    m->~Iterator();
+    DeleteIterator(m, true /* is_arena */);
   }
   imm_iters_.clear();
+
   for (auto* f : l0_iters_) {
-    delete f;
+    DeleteIterator(f);
   }
   l0_iters_.clear();
+
   for (auto* l : level_iters_) {
-    delete l;
+    DeleteIterator(l);
   }
   level_iters_.clear();
 
   if (release_sv) {
-    if (sv_ != nullptr && sv_->Unref()) {
-      // Job id == 0 means that this is not our background process, but rather
-      // user thread
-      JobContext job_context(0);
-      db_->mutex_.Lock();
-      sv_->Cleanup();
-      db_->FindObsoleteFiles(&job_context, false, true);
-      db_->mutex_.Unlock();
-      delete sv_;
-      if (job_context.HaveSomethingToDelete()) {
-        db_->PurgeObsoleteFiles(job_context);
-      }
-      job_context.Clean();
-    }
+    SVCleanup();
   }
 }
 
@@ -185,9 +259,10 @@ bool ForwardIterator::Valid() const {
 }
 
 void ForwardIterator::SeekToFirst() {
-  if (sv_ == nullptr ||
-      sv_ ->version_number != cfd_->GetSuperVersionNumber()) {
+  if (sv_ == nullptr) {
     RebuildIterators(true);
+  } else if (sv_->version_number != cfd_->GetSuperVersionNumber()) {
+    RenewIterators();
   } else if (immutable_status_.IsIncomplete()) {
     ResetIncompleteIterators();
   }
@@ -205,9 +280,10 @@ void ForwardIterator::Seek(const Slice& internal_key) {
   if (IsOverUpperBound(internal_key)) {
     valid_ = false;
   }
-  if (sv_ == nullptr ||
-      sv_ ->version_number != cfd_->GetSuperVersionNumber()) {
+  if (sv_ == nullptr) {
     RebuildIterators(true);
+  } else if (sv_->version_number != cfd_->GetSuperVersionNumber()) {
+    RenewIterators();
   } else if (immutable_status_.IsIncomplete()) {
     ResetIncompleteIterators();
   }
@@ -227,7 +303,15 @@ void ForwardIterator::SeekInternal(const Slice& internal_key,
   // an option to turn it off.
   if (seek_to_first || NeedToSeekImmutable(internal_key)) {
     immutable_status_ = Status::OK();
-    if (has_iter_trimmed_for_upper_bound_) {
+    if (has_iter_trimmed_for_upper_bound_ &&
+        (
+            // prev_ is not set yet
+            is_prev_set_ == false ||
+            // We are doing SeekToFirst() and internal_key.size() = 0
+            seek_to_first ||
+            // prev_key_ > internal_key
+            cfd_->internal_comparator().InternalKeyComparator::Compare(
+                prev_key_.GetInternalKey(), internal_key) > 0)) {
       // Some iterators are trimmed. Need to rebuild.
       RebuildIterators(true);
       // Already seeked mutable iter, so seek again
@@ -254,7 +338,7 @@ void ForwardIterator::SeekInternal(const Slice& internal_key,
     }
     const VersionStorageInfo* vstorage = sv_->current->storage_info();
     const std::vector<FileMetaData*>& l0 = vstorage->LevelFiles(0);
-    for (uint32_t i = 0; i < l0.size(); ++i) {
+    for (size_t i = 0; i < l0.size(); ++i) {
       if (!l0_iters_[i]) {
         continue;
       }
@@ -267,7 +351,7 @@ void ForwardIterator::SeekInternal(const Slice& internal_key,
               l0[i]->largest.user_key()) > 0) {
           if (read_options_.iterate_upper_bound != nullptr) {
             has_iter_trimmed_for_upper_bound_ = true;
-            delete l0_iters_[i];
+            DeleteIterator(l0_iters_[i]);
             l0_iters_[i] = nullptr;
           }
           continue;
@@ -282,67 +366,25 @@ void ForwardIterator::SeekInternal(const Slice& internal_key,
           immutable_min_heap_.push(l0_iters_[i]);
         } else {
           has_iter_trimmed_for_upper_bound_ = true;
-          delete l0_iters_[i];
+          DeleteIterator(l0_iters_[i]);
           l0_iters_[i] = nullptr;
         }
       }
     }
 
-    int32_t search_left_bound = 0;
-    int32_t search_right_bound = FileIndexer::kLevelMaxIndex;
     for (int32_t level = 1; level < vstorage->num_levels(); ++level) {
       const std::vector<FileMetaData*>& level_files =
           vstorage->LevelFiles(level);
       if (level_files.empty()) {
-        search_left_bound = 0;
-        search_right_bound = FileIndexer::kLevelMaxIndex;
         continue;
       }
       if (level_iters_[level - 1] == nullptr) {
         continue;
       }
       uint32_t f_idx = 0;
-      const auto& indexer = vstorage->file_indexer();
       if (!seek_to_first) {
-        if (search_left_bound == search_right_bound) {
-          f_idx = search_left_bound;
-        } else if (search_left_bound < search_right_bound) {
-          f_idx =
-              FindFileInRange(level_files, internal_key, search_left_bound,
-                              search_right_bound == FileIndexer::kLevelMaxIndex
-                                  ? static_cast<uint32_t>(level_files.size())
-                                  : search_right_bound);
-        } else {
-          // search_left_bound > search_right_bound
-          // There are only 2 cases this can happen:
-          // (1) target key is smaller than left most file
-          // (2) target key is larger than right most file
-          assert(search_left_bound == (int32_t)level_files.size() ||
-                 search_right_bound == -1);
-          if (search_right_bound == -1) {
-            assert(search_left_bound == 0);
-            f_idx = 0;
-          } else {
-            indexer.GetNextLevelIndex(
-                level, level_files.size() - 1,
-                1, 1, &search_left_bound, &search_right_bound);
-            continue;
-          }
-        }
-
-        // Prepare hints for the next level
-        if (f_idx < level_files.size()) {
-          int cmp_smallest = user_comparator_->Compare(
-              user_key, level_files[f_idx]->smallest.user_key());
-          assert(user_comparator_->Compare(
-                     user_key, level_files[f_idx]->largest.user_key()) <= 0);
-          indexer.GetNextLevelIndex(level, f_idx, cmp_smallest, -1,
-                                    &search_left_bound, &search_right_bound);
-        } else {
-          indexer.GetNextLevelIndex(
-              level, level_files.size() - 1,
-              1, 1, &search_left_bound, &search_right_bound);
-        }
+        f_idx = FindFileInRange(level_files, internal_key, 0,
+                                static_cast<uint32_t>(level_files.size()));
       }
 
       // Seek
@@ -359,7 +401,7 @@ void ForwardIterator::SeekInternal(const Slice& internal_key,
           } else {
             // Nothing in this level is interesting. Remove.
             has_iter_trimmed_for_upper_bound_ = true;
-            delete level_iters_[level - 1];
+            DeleteIterator(level_iters_[level - 1]);
             level_iters_[level - 1] = nullptr;
           }
         }
@@ -369,7 +411,7 @@ void ForwardIterator::SeekInternal(const Slice& internal_key,
     if (seek_to_first) {
       is_prev_set_ = false;
     } else {
-      prev_key_.SetKey(internal_key);
+      prev_key_.SetInternalKey(internal_key);
       is_prev_set_ = true;
       is_prev_inclusive_ = true;
     }
@@ -393,7 +435,11 @@ void ForwardIterator::Next() {
     std::string current_key = key().ToString();
     Slice old_key(current_key.data(), current_key.size());
 
-    RebuildIterators(true);
+    if (sv_ == nullptr) {
+      RebuildIterators(true);
+    } else {
+      RenewIterators();
+    }
     SeekInternal(old_key, false);
     if (!valid_ || key().compare(old_key) != 0) {
       return;
@@ -404,15 +450,15 @@ void ForwardIterator::Next() {
     if (is_prev_set_ && prefix_extractor_) {
       // advance prev_key_ to current_ only if they share the same prefix
       update_prev_key =
-        prefix_extractor_->Transform(prev_key_.GetKey()).compare(
-          prefix_extractor_->Transform(current_->key())) == 0;
+          prefix_extractor_->Transform(prev_key_.GetUserKey())
+              .compare(prefix_extractor_->Transform(current_->key())) == 0;
     } else {
       update_prev_key = true;
     }
 
 
     if (update_prev_key) {
-      prev_key_.SetKey(current_->key());
+      prev_key_.SetInternalKey(current_->key());
       is_prev_set_ = true;
       is_prev_inclusive_ = false;
     }
@@ -431,7 +477,7 @@ void ForwardIterator::Next() {
         current_ = nullptr;
       }
       if (update_prev_key) {
-        mutable_iter_->Seek(prev_key_.GetKey());
+        mutable_iter_->Seek(prev_key_.GetInternalKey());
       }
     }
   }
@@ -459,6 +505,59 @@ Status ForwardIterator::status() const {
   return immutable_status_;
 }
 
+Status ForwardIterator::GetProperty(std::string prop_name, std::string* prop) {
+  assert(prop != nullptr);
+  if (prop_name == "rocksdb.iterator.super-version-number") {
+    *prop = ToString(sv_->version_number);
+    return Status::OK();
+  }
+  return Status::InvalidArgument();
+}
+
+void ForwardIterator::SetPinnedItersMgr(
+    PinnedIteratorsManager* pinned_iters_mgr) {
+  pinned_iters_mgr_ = pinned_iters_mgr;
+  UpdateChildrenPinnedItersMgr();
+}
+
+void ForwardIterator::UpdateChildrenPinnedItersMgr() {
+  // Set PinnedIteratorsManager for mutable memtable iterator.
+  if (mutable_iter_) {
+    mutable_iter_->SetPinnedItersMgr(pinned_iters_mgr_);
+  }
+
+  // Set PinnedIteratorsManager for immutable memtable iterators.
+  for (InternalIterator* child_iter : imm_iters_) {
+    if (child_iter) {
+      child_iter->SetPinnedItersMgr(pinned_iters_mgr_);
+    }
+  }
+
+  // Set PinnedIteratorsManager for L0 files iterators.
+  for (InternalIterator* child_iter : l0_iters_) {
+    if (child_iter) {
+      child_iter->SetPinnedItersMgr(pinned_iters_mgr_);
+    }
+  }
+
+  // Set PinnedIteratorsManager for L1+ levels iterators.
+  for (LevelIterator* child_iter : level_iters_) {
+    if (child_iter) {
+      child_iter->SetPinnedItersMgr(pinned_iters_mgr_);
+    }
+  }
+}
+
+bool ForwardIterator::IsKeyPinned() const {
+  return pinned_iters_mgr_ && pinned_iters_mgr_->PinningEnabled() &&
+         current_->IsKeyPinned();
+}
+
+bool ForwardIterator::IsValuePinned() const {
+  return pinned_iters_mgr_ && pinned_iters_mgr_->PinningEnabled() &&
+         current_->IsValuePinned();
+}
+
 void ForwardIterator::RebuildIterators(bool refresh_sv) {
   // Clean up
   Cleanup(refresh_sv);
@@ -466,8 +565,17 @@ void ForwardIterator::RebuildIterators(bool refresh_sv) {
     // New
     sv_ = cfd_->GetReferencedSuperVersion(&(db_->mutex_));
   }
+  RangeDelAggregator range_del_agg(
+      InternalKeyComparator(cfd_->internal_comparator()), {} /* snapshots */);
   mutable_iter_ = sv_->mem->NewIterator(read_options_, &arena_);
   sv_->imm->AddIterators(read_options_, &imm_iters_, &arena_);
+  if (!read_options_.ignore_range_deletions) {
+    std::unique_ptr<InternalIterator> range_del_iter(
+        sv_->mem->NewRangeTombstoneIterator(read_options_));
+    range_del_agg.AddTombstones(std::move(range_del_iter));
+    sv_->imm->AddRangeTombstoneIterators(read_options_, &arena_,
+                                         &range_del_agg);
+  }
   has_iter_trimmed_for_upper_bound_ = false;
 
   const auto* vstorage = sv_->current->storage_info();
@@ -482,12 +590,108 @@ void ForwardIterator::RebuildIterators(bool refresh_sv) {
       continue;
     }
     l0_iters_.push_back(cfd_->table_cache()->NewIterator(
-        read_options_, *cfd_->soptions(), cfd_->internal_comparator(), l0->fd));
+        read_options_, *cfd_->soptions(), cfd_->internal_comparator(), l0->fd,
+        read_options_.ignore_range_deletions ? nullptr : &range_del_agg));
   }
+  BuildLevelIterators(vstorage);
+  current_ = nullptr;
+  is_prev_set_ = false;
+
+  UpdateChildrenPinnedItersMgr();
+  if (!range_del_agg.IsEmpty()) {
+    status_ = Status::NotSupported(
+        "Range tombstones unsupported with ForwardIterator");
+    valid_ = false;
+  }
+}
+
+void ForwardIterator::RenewIterators() {
+  SuperVersion* svnew;
+  assert(sv_);
+  svnew = cfd_->GetReferencedSuperVersion(&(db_->mutex_));
+
+  if (mutable_iter_ != nullptr) {
+    DeleteIterator(mutable_iter_, true /* is_arena */);
+  }
+  for (auto* m : imm_iters_) {
+    DeleteIterator(m, true /* is_arena */);
+  }
+  imm_iters_.clear();
+
+  mutable_iter_ = svnew->mem->NewIterator(read_options_, &arena_);
+  svnew->imm->AddIterators(read_options_, &imm_iters_, &arena_);
+  RangeDelAggregator range_del_agg(
+      InternalKeyComparator(cfd_->internal_comparator()), {} /* snapshots */);
+  if (!read_options_.ignore_range_deletions) {
+    std::unique_ptr<InternalIterator> range_del_iter(
+        svnew->mem->NewRangeTombstoneIterator(read_options_));
+    range_del_agg.AddTombstones(std::move(range_del_iter));
+    sv_->imm->AddRangeTombstoneIterators(read_options_, &arena_,
+                                         &range_del_agg);
+  }
+
+  const auto* vstorage = sv_->current->storage_info();
+  const auto& l0_files = vstorage->LevelFiles(0);
+  const auto* vstorage_new = svnew->current->storage_info();
+  const auto& l0_files_new = vstorage_new->LevelFiles(0);
+  size_t iold, inew;
+  bool found;
+  std::vector<InternalIterator*> l0_iters_new;
+  l0_iters_new.reserve(l0_files_new.size());
+
+  for (inew = 0; inew < l0_files_new.size(); inew++) {
+    found = false;
+    for (iold = 0; iold < l0_files.size(); iold++) {
+      if (l0_files[iold] == l0_files_new[inew]) {
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      if (l0_iters_[iold] == nullptr) {
+        l0_iters_new.push_back(nullptr);
+        TEST_SYNC_POINT_CALLBACK("ForwardIterator::RenewIterators:Null", this);
+      } else {
+        l0_iters_new.push_back(l0_iters_[iold]);
+        l0_iters_[iold] = nullptr;
+        TEST_SYNC_POINT_CALLBACK("ForwardIterator::RenewIterators:Copy", this);
+      }
+      continue;
+    }
+    l0_iters_new.push_back(cfd_->table_cache()->NewIterator(
+        read_options_, *cfd_->soptions(), cfd_->internal_comparator(),
+        l0_files_new[inew]->fd,
+        read_options_.ignore_range_deletions ? nullptr : &range_del_agg));
+  }
+
+  for (auto* f : l0_iters_) {
+    DeleteIterator(f);
+  }
+  l0_iters_.clear();
+  l0_iters_ = l0_iters_new;
+
+  for (auto* l : level_iters_) {
+    DeleteIterator(l);
+  }
+  level_iters_.clear();
+  BuildLevelIterators(vstorage_new);
+  current_ = nullptr;
+  is_prev_set_ = false;
+  SVCleanup();
+  sv_ = svnew;
+
+  UpdateChildrenPinnedItersMgr();
+  if (!range_del_agg.IsEmpty()) {
+    status_ = Status::NotSupported(
+        "Range tombstones unsupported with ForwardIterator");
+    valid_ = false;
+  }
+}
+
+void ForwardIterator::BuildLevelIterators(const VersionStorageInfo* vstorage) {
   level_iters_.reserve(vstorage->num_levels() - 1);
   for (int32_t level = 1; level < vstorage->num_levels(); ++level) {
     const auto& level_files = vstorage->LevelFiles(level);
-
     if ((level_files.empty()) ||
         ((read_options_.iterate_upper_bound != nullptr) &&
          (user_comparator_->Compare(*read_options_.iterate_upper_bound,
@@ -502,22 +706,20 @@ void ForwardIterator::RebuildIterators(bool refresh_sv) {
           new LevelIterator(cfd_, read_options_, level_files));
     }
   }
-
-  current_ = nullptr;
-  is_prev_set_ = false;
 }
 
 void ForwardIterator::ResetIncompleteIterators() {
   const auto& l0_files = sv_->current->storage_info()->LevelFiles(0);
-  for (uint32_t i = 0; i < l0_iters_.size(); ++i) {
+  for (size_t i = 0; i < l0_iters_.size(); ++i) {
     assert(i < l0_files.size());
     if (!l0_iters_[i] || !l0_iters_[i]->status().IsIncomplete()) {
       continue;
     }
-    delete l0_iters_[i];
+    DeleteIterator(l0_iters_[i]);
     l0_iters_[i] = cfd_->table_cache()->NewIterator(
         read_options_, *cfd_->soptions(), cfd_->internal_comparator(),
-        l0_files[i]->fd);
+        l0_files[i]->fd, nullptr /* range_del_agg */);
+    l0_iters_[i]->SetPinnedItersMgr(pinned_iters_mgr_);
   }
 
   for (auto* level_iter : level_iters_) {
@@ -575,7 +777,7 @@ bool ForwardIterator::NeedToSeekImmutable(const Slice& target) {
   if (!valid_ || !current_ || !is_prev_set_ || !immutable_status_.ok()) {
     return true;
   }
-  Slice prev_key = prev_key_.GetKey();
+  Slice prev_key = prev_key_.GetInternalKey();
   if (prefix_extractor_ && prefix_extractor_->Transform(target).compare(
     prefix_extractor_->Transform(prev_key)) != 0) {
     return true;
@@ -600,13 +802,13 @@ bool ForwardIterator::NeedToSeekImmutable(const Slice& target) {
 void ForwardIterator::DeleteCurrentIter() {
   const VersionStorageInfo* vstorage = sv_->current->storage_info();
   const std::vector<FileMetaData*>& l0 = vstorage->LevelFiles(0);
-  for (uint32_t i = 0; i < l0.size(); ++i) {
+  for (size_t i = 0; i < l0.size(); ++i) {
     if (!l0_iters_[i]) {
       continue;
     }
     if (l0_iters_[i] == current_) {
       has_iter_trimmed_for_upper_bound_ = true;
-      delete l0_iters_[i];
+      DeleteIterator(l0_iters_[i]);
       l0_iters_[i] = nullptr;
       return;
     }
@@ -618,7 +820,7 @@ void ForwardIterator::DeleteCurrentIter() {
     }
     if (level_iters_[level - 1] == current_) {
       has_iter_trimmed_for_upper_bound_ = true;
-      delete level_iters_[level - 1];
+      DeleteIterator(level_iters_[level - 1]);
       level_iters_[level - 1] = nullptr;
     }
   }
@@ -632,7 +834,7 @@ bool ForwardIterator::TEST_CheckDeletedIters(int* pdeleted_iters,
 
   const VersionStorageInfo* vstorage = sv_->current->storage_info();
   const std::vector<FileMetaData*>& l0 = vstorage->LevelFiles(0);
-  for (uint32_t i = 0; i < l0.size(); ++i) {
+  for (size_t i = 0; i < l0.size(); ++i) {
     if (!l0_iters_[i]) {
       retval = true;
       deleted_iters++;
@@ -680,6 +882,22 @@ uint32_t ForwardIterator::FindFileInRange(
     }
   }
   return right;
+}
+
+void ForwardIterator::DeleteIterator(InternalIterator* iter, bool is_arena) {
+  if (iter == nullptr) {
+    return;
+  }
+
+  if (pinned_iters_mgr_ && pinned_iters_mgr_->PinningEnabled()) {
+    pinned_iters_mgr_->PinIterator(iter, is_arena);
+  } else {
+    if (is_arena) {
+      iter->~InternalIterator();
+    } else {
+      delete iter;
+    }
+  }
 }
 
 }  // namespace rocksdb

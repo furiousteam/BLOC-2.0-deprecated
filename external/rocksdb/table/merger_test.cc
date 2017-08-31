@@ -1,12 +1,12 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 
 #include <vector>
 #include <string>
 
-#include "table/merger.h"
+#include "table/merging_iterator.h"
 #include "util/testharness.h"
 #include "util/testutil.h"
 
@@ -88,7 +88,7 @@ class MergerTest : public testing::Test {
 
   void Generate(size_t num_iterators, size_t strings_per_iterator,
                 int letters_per_string) {
-    std::vector<Iterator*> small_iterators;
+    std::vector<InternalIterator*> small_iterators;
     for (size_t i = 0; i < num_iterators; ++i) {
       auto strings = GenerateStrings(strings_per_iterator, letters_per_string);
       small_iterators.push_back(new test::VectorIterator(strings));
@@ -102,8 +102,8 @@ class MergerTest : public testing::Test {
   }
 
   Random rnd_;
-  std::unique_ptr<Iterator> merging_iterator_;
-  std::unique_ptr<Iterator> single_iterator_;
+  std::unique_ptr<InternalIterator> merging_iterator_;
+  std::unique_ptr<InternalIterator> single_iterator_;
   std::vector<std::string> all_keys_;
 };
 

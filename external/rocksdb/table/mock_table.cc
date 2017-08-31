@@ -1,9 +1,7 @@
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. See the AUTHORS file for names of contributors.
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 
 #include "table/mock_table.h"
 
@@ -28,12 +26,15 @@ stl_wrappers::KVMap MakeMockFile(
   return stl_wrappers::KVMap(l, stl_wrappers::LessOfComparator(&icmp_));
 }
 
-Iterator* MockTableReader::NewIterator(const ReadOptions&, Arena* arena) {
+InternalIterator* MockTableReader::NewIterator(const ReadOptions&,
+                                               Arena* arena,
+                                               const InternalKeyComparator*,
+                                               bool skip_filters) {
   return new MockTableIterator(table_);
 }
 
 Status MockTableReader::Get(const ReadOptions&, const Slice& key,
-                            GetContext* get_context) {
+                            GetContext* get_context, bool skip_filters) {
   std::unique_ptr<MockTableIterator> iter(new MockTableIterator(table_));
   for (iter->Seek(key); iter->Valid(); iter->Next()) {
     ParsedInternalKey parsed_key;
@@ -58,7 +59,8 @@ MockTableFactory::MockTableFactory() : next_id_(1) {}
 Status MockTableFactory::NewTableReader(
     const TableReaderOptions& table_reader_options,
     unique_ptr<RandomAccessFileReader>&& file, uint64_t file_size,
-    unique_ptr<TableReader>* table_reader) const {
+    unique_ptr<TableReader>* table_reader,
+    bool prefetch_index_and_filter_in_cache) const {
   uint32_t id = GetIDFromFile(file.get());
 
   MutexLock lock_guard(&file_system_.mutex);
@@ -74,9 +76,9 @@ Status MockTableFactory::NewTableReader(
 }
 
 TableBuilder* MockTableFactory::NewTableBuilder(
-    const TableBuilderOptions& table_builder_options,
+    const TableBuilderOptions& table_builder_options, uint32_t column_family_id,
     WritableFileWriter* file) const {
-  uint32_t id = GetAndWriteNextID(file->writable_file());
+  uint32_t id = GetAndWriteNextID(file);
 
   return new MockTableBuilder(id, &file_system_);
 }
@@ -89,12 +91,14 @@ Status MockTableFactory::CreateMockTable(Env* env, const std::string& fname,
     return s;
   }
 
-  uint32_t id = GetAndWriteNextID(file.get());
+  WritableFileWriter file_writer(std::move(file), EnvOptions());
+
+  uint32_t id = GetAndWriteNextID(&file_writer);
   file_system_.files.insert({id, std::move(file_contents)});
   return Status::OK();
 }
 
-uint32_t MockTableFactory::GetAndWriteNextID(WritableFile* file) const {
+uint32_t MockTableFactory::GetAndWriteNextID(WritableFileWriter* file) const {
   uint32_t next_id = next_id_.fetch_add(1);
   char buf[4];
   EncodeFixed32(buf, next_id);
@@ -113,7 +117,7 @@ uint32_t MockTableFactory::GetIDFromFile(RandomAccessFileReader* file) const {
 void MockTableFactory::AssertSingleFile(
     const stl_wrappers::KVMap& file_contents) {
   ASSERT_EQ(file_system_.files.size(), 1U);
-  ASSERT_TRUE(file_contents == file_system_.files.begin()->second);
+  ASSERT_EQ(file_contents, file_system_.files.begin()->second);
 }
 
 void MockTableFactory::AssertLatestFile(

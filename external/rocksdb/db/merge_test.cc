@@ -1,7 +1,7 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 //
 #include <assert.h>
 #include <memory>
@@ -20,7 +20,6 @@
 #include "utilities/merge_operators.h"
 #include "util/testharness.h"
 
-using namespace std;
 using namespace rocksdb;
 
 namespace {
@@ -76,21 +75,19 @@ class CountMergeOperator : public AssociativeMergeOperator {
 };
 
 namespace {
-std::shared_ptr<DB> OpenDb(const string& dbname, const bool ttl = false,
-                           const size_t max_successive_merges = 0,
-                           const uint32_t min_partial_merge_operands = 2) {
+std::shared_ptr<DB> OpenDb(const std::string& dbname, const bool ttl = false,
+                           const size_t max_successive_merges = 0) {
   DB* db;
   Options options;
   options.create_if_missing = true;
   options.merge_operator = std::make_shared<CountMergeOperator>();
   options.max_successive_merges = max_successive_merges;
-  options.min_partial_merge_operands = min_partial_merge_operands;
   Status s;
   DestroyDB(dbname, Options());
 // DBWithTTL is not supported in ROCKSDB_LITE
 #ifndef ROCKSDB_LITE
   if (ttl) {
-    cout << "Opening database with TTL\n";
+    std::cout << "Opening database with TTL\n";
     DBWithTTL* db_with_ttl;
     s = DBWithTTL::Open(options, dbname, &db_with_ttl);
     db = db_with_ttl;
@@ -102,7 +99,7 @@ std::shared_ptr<DB> OpenDb(const string& dbname, const bool ttl = false,
   s = DB::Open(options, dbname, &db);
 #endif  // !ROCKSDB_LITE
   if (!s.ok()) {
-    cerr << s.ToString() << endl;
+    std::cerr << s.ToString() << std::endl;
     assert(false);
   }
   return std::shared_ptr<DB>(db);
@@ -142,34 +139,36 @@ class Counters {
   // if the underlying level db operation failed.
 
   // mapped to a levedb Put
-  bool set(const string& key, uint64_t value) {
+  bool set(const std::string& key, uint64_t value) {
     // just treat the internal rep of int64 as the string
-    Slice slice((char *)&value, sizeof(value));
+    char buf[sizeof(value)];
+    EncodeFixed64(buf, value);
+    Slice slice(buf, sizeof(value));
     auto s = db_->Put(put_option_, key, slice);
 
     if (s.ok()) {
       return true;
     } else {
-      cerr << s.ToString() << endl;
+      std::cerr << s.ToString() << std::endl;
       return false;
     }
   }
 
   // mapped to a rocksdb Delete
-  bool remove(const string& key) {
+  bool remove(const std::string& key) {
     auto s = db_->Delete(delete_option_, key);
 
     if (s.ok()) {
       return true;
     } else {
-      cerr << s.ToString() << std::endl;
+      std::cerr << s.ToString() << std::endl;
       return false;
     }
   }
 
   // mapped to a rocksdb Get
-  bool get(const string& key, uint64_t *value) {
-    string str;
+  bool get(const std::string& key, uint64_t* value) {
+    std::string str;
     auto s = db_->Get(get_option_, key, &str);
 
     if (s.IsNotFound()) {
@@ -179,35 +178,33 @@ class Counters {
     } else if (s.ok()) {
       // deserialization
       if (str.size() != sizeof(uint64_t)) {
-        cerr << "value corruption\n";
+        std::cerr << "value corruption\n";
         return false;
       }
       *value = DecodeFixed64(&str[0]);
       return true;
     } else {
-      cerr << s.ToString() << std::endl;
+      std::cerr << s.ToString() << std::endl;
       return false;
     }
   }
 
   // 'add' is implemented as get -> modify -> set
   // An alternative is a single merge operation, see MergeBasedCounters
-  virtual bool add(const string& key, uint64_t value) {
+  virtual bool add(const std::string& key, uint64_t value) {
     uint64_t base = default_;
     return get(key, &base) && set(key, base + value);
   }
 
 
   // convenience functions for testing
-  void assert_set(const string& key, uint64_t value) {
+  void assert_set(const std::string& key, uint64_t value) {
     assert(set(key, value));
   }
 
-  void assert_remove(const string& key) {
-    assert(remove(key));
-  }
+  void assert_remove(const std::string& key) { assert(remove(key)); }
 
-  uint64_t assert_get(const string& key) {
+  uint64_t assert_get(const std::string& key) {
     uint64_t value = default_;
     int result = get(key, &value);
     assert(result);
@@ -215,7 +212,7 @@ class Counters {
     return value;
   }
 
-  void assert_add(const string& key, uint64_t value) {
+  void assert_add(const std::string& key, uint64_t value) {
     int result = add(key, value);
     assert(result);
     if (result == 0) exit(1); // Disable unused variable warning.
@@ -234,7 +231,7 @@ class MergeBasedCounters : public Counters {
   }
 
   // mapped to a rocksdb Merge operation
-  virtual bool add(const string& key, uint64_t value) override {
+  virtual bool add(const std::string& key, uint64_t value) override {
     char encoded[sizeof(uint64_t)];
     EncodeFixed64(encoded, value);
     Slice slice(encoded, sizeof(uint64_t));
@@ -243,7 +240,7 @@ class MergeBasedCounters : public Counters {
     if (s.ok()) {
       return true;
     } else {
-      cerr << s.ToString() << endl;
+      std::cerr << s.ToString() << std::endl;
       return false;
     }
   }
@@ -254,7 +251,7 @@ void dumpDb(DB* db) {
   auto it = unique_ptr<Iterator>(db->NewIterator(ReadOptions()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     uint64_t value = DecodeFixed64(it->value().data());
-    cout << it->key().ToString() << ": "  << value << endl;
+    std::cout << it->key().ToString() << ": " << value << std::endl;
   }
   assert(it->status().ok());  // Check for any errors found during the scan
 }
@@ -302,9 +299,9 @@ void testCounters(Counters& counters, DB* db, bool test_compaction) {
   if (test_compaction) {
     db->Flush(o);
 
-    cout << "Compaction started ...\n";
+    std::cout << "Compaction started ...\n";
     db->CompactRange(CompactRangeOptions(), nullptr, nullptr);
-    cout << "Compaction ended\n";
+    std::cout << "Compaction ended\n";
 
     dumpDb(db);
 
@@ -380,7 +377,9 @@ void testSingleBatchSuccessiveMerge(DB* db, size_t max_num_merges,
 
   Slice key("BatchSuccessiveMerge");
   uint64_t merge_value = 1;
-  Slice merge_value_slice((char *)&merge_value, sizeof(merge_value));
+  char buf[sizeof(merge_value)];
+  EncodeFixed64(buf, merge_value);
+  Slice merge_value_slice(buf, sizeof(merge_value));
 
   // Create the batch
   WriteBatch batch;
@@ -400,7 +399,7 @@ void testSingleBatchSuccessiveMerge(DB* db, size_t max_num_merges,
 
   // Get the value
   resetNumMergeOperatorCalls();
-  string get_value_str;
+  std::string get_value_str;
   {
     Status s = db->Get(ReadOptions(), key, &get_value_str);
     assert(s.ok());
@@ -412,24 +411,24 @@ void testSingleBatchSuccessiveMerge(DB* db, size_t max_num_merges,
             static_cast<size_t>((num_merges % (max_num_merges + 1))));
 }
 
-void runTest(int argc, const string& dbname, const bool use_ttl = false) {
+void runTest(int argc, const std::string& dbname, const bool use_ttl = false) {
   bool compact = false;
   if (argc > 1) {
     compact = true;
-    cout << "Turn on Compaction\n";
+    std::cout << "Turn on Compaction\n";
   }
 
   {
     auto db = OpenDb(dbname, use_ttl);
 
     {
-      cout << "Test read-modify-write counters... \n";
+      std::cout << "Test read-modify-write counters... \n";
       Counters counters(db, 0);
       testCounters(counters, db.get(), true);
     }
 
     {
-      cout << "Test merge-based counters... \n";
+      std::cout << "Test merge-based counters... \n";
       MergeBasedCounters counters(db, 0);
       testCounters(counters, db.get(), compact);
     }
@@ -438,7 +437,7 @@ void runTest(int argc, const string& dbname, const bool use_ttl = false) {
   DestroyDB(dbname, Options());
 
   {
-    cout << "Test merge in memtable... \n";
+    std::cout << "Test merge in memtable... \n";
     size_t max_merge = 5;
     auto db = OpenDb(dbname, use_ttl, max_merge);
     MergeBasedCounters counters(db, 0);
@@ -449,27 +448,27 @@ void runTest(int argc, const string& dbname, const bool use_ttl = false) {
   }
 
   {
-    cout << "Test Partial-Merge\n";
+    std::cout << "Test Partial-Merge\n";
     size_t max_merge = 100;
-    for (uint32_t min_merge = 5; min_merge < 25; min_merge += 5) {
-      for (uint32_t count = min_merge - 1; count <= min_merge + 1; count++) {
-        auto db = OpenDb(dbname, use_ttl, max_merge, min_merge);
-        MergeBasedCounters counters(db, 0);
-        testPartialMerge(&counters, db.get(), max_merge, min_merge, count);
-        DestroyDB(dbname, Options());
-      }
-      {
-        auto db = OpenDb(dbname, use_ttl, max_merge, min_merge);
-        MergeBasedCounters counters(db, 0);
-        testPartialMerge(&counters, db.get(), max_merge, min_merge,
-                         min_merge * 10);
-        DestroyDB(dbname, Options());
-      }
+    // Min merge is hard-coded to 2.
+    uint32_t min_merge = 2;
+    for (uint32_t count = min_merge - 1; count <= min_merge + 1; count++) {
+      auto db = OpenDb(dbname, use_ttl, max_merge);
+      MergeBasedCounters counters(db, 0);
+      testPartialMerge(&counters, db.get(), max_merge, min_merge, count);
+      DestroyDB(dbname, Options());
+    }
+    {
+      auto db = OpenDb(dbname, use_ttl, max_merge);
+      MergeBasedCounters counters(db, 0);
+      testPartialMerge(&counters, db.get(), max_merge, min_merge,
+                       min_merge * 10);
+      DestroyDB(dbname, Options());
     }
   }
 
   {
-    cout << "Test merge-operator not set after reopen\n";
+    std::cout << "Test merge-operator not set after reopen\n";
     {
       auto db = OpenDb(dbname);
       MergeBasedCounters counters(db, 0);
@@ -489,7 +488,7 @@ void runTest(int argc, const string& dbname, const bool use_ttl = false) {
 
   /* Temporary remove this test
   {
-    cout << "Test merge-operator not set after reopen (recovery case)\n";
+    std::cout << "Test merge-operator not set after reopen (recovery case)\n";
     {
       auto db = OpenDb(dbname);
       MergeBasedCounters counters(db, 0);

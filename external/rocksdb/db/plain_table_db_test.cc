@@ -1,9 +1,7 @@
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. See the AUTHORS file for names of contributors.
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 //
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -15,7 +13,6 @@
 #include <set>
 
 #include "db/db_impl.h"
-#include "db/filename.h"
 #include "db/version_set.h"
 #include "db/write_batch_internal.h"
 #include "rocksdb/cache.h"
@@ -25,11 +22,13 @@
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/slice_transform.h"
 #include "rocksdb/table.h"
-#include "table/meta_blocks.h"
 #include "table/bloom_block.h"
-#include "table/table_builder.h"
+#include "table/meta_blocks.h"
 #include "table/plain_table_factory.h"
+#include "table/plain_table_key_coding.h"
 #include "table/plain_table_reader.h"
+#include "table/table_builder.h"
+#include "util/filename.h"
 #include "util/hash.h"
 #include "util/logging.h"
 #include "util/mutexlock.h"
@@ -41,6 +40,59 @@
 using std::unique_ptr;
 
 namespace rocksdb {
+class PlainTableKeyDecoderTest : public testing::Test {};
+
+TEST_F(PlainTableKeyDecoderTest, ReadNonMmap) {
+  std::string tmp;
+  Random rnd(301);
+  const uint32_t kLength = 2222;
+  Slice contents = test::RandomString(&rnd, kLength, &tmp);
+  test::StringSource* string_source =
+      new test::StringSource(contents, 0, false);
+
+  unique_ptr<RandomAccessFileReader> file_reader(
+      test::GetRandomAccessFileReader(string_source));
+  unique_ptr<PlainTableReaderFileInfo> file_info(new PlainTableReaderFileInfo(
+      std::move(file_reader), EnvOptions(), kLength));
+
+  {
+    PlainTableFileReader reader(file_info.get());
+
+    const uint32_t kReadSize = 77;
+    for (uint32_t pos = 0; pos < kLength; pos += kReadSize) {
+      uint32_t read_size = std::min(kLength - pos, kReadSize);
+      Slice out;
+      ASSERT_TRUE(reader.Read(pos, read_size, &out));
+      ASSERT_EQ(0, out.compare(tmp.substr(pos, read_size)));
+    }
+
+    ASSERT_LT(uint32_t(string_source->total_reads()), kLength / kReadSize / 2);
+  }
+
+  std::vector<std::vector<std::pair<uint32_t, uint32_t>>> reads = {
+      {{600, 30}, {590, 30}, {600, 20}, {600, 40}},
+      {{800, 20}, {100, 20}, {500, 20}, {1500, 20}, {100, 20}, {80, 20}},
+      {{1000, 20}, {500, 20}, {1000, 50}},
+      {{1000, 20}, {500, 20}, {500, 20}},
+      {{1000, 20}, {500, 20}, {200, 20}, {500, 20}},
+      {{1000, 20}, {500, 20}, {200, 20}, {1000, 50}},
+      {{600, 500}, {610, 20}, {100, 20}},
+      {{500, 100}, {490, 100}, {550, 50}},
+  };
+
+  std::vector<int> num_file_reads = {2, 6, 2, 2, 4, 3, 2, 2};
+
+  for (size_t i = 0; i < reads.size(); i++) {
+    string_source->set_total_reads(0);
+    PlainTableFileReader reader(file_info.get());
+    for (auto p : reads[i]) {
+      Slice out;
+      ASSERT_TRUE(reader.Read(p.first, p.second, &out));
+      ASSERT_EQ(0, out.compare(tmp.substr(p.first, p.second)));
+    }
+    ASSERT_EQ(num_file_reads[i], string_source->total_reads());
+  }
+}
 
 class PlainTableDBTest : public testing::Test,
                          public testing::WithParamInterface<bool> {
@@ -88,6 +140,7 @@ class PlainTableDBTest : public testing::Test,
 
     options.prefix_extractor.reset(NewFixedPrefixTransform(8));
     options.allow_mmap_reads = mmap_mode_;
+    options.allow_concurrent_memtable_write = false;
     return options;
   }
 
@@ -209,7 +262,9 @@ class TestPlainTableReader : public PlainTableReader {
                        const TableProperties* table_properties,
                        unique_ptr<RandomAccessFileReader>&& file,
                        const ImmutableCFOptions& ioptions,
-                       bool* expect_bloom_not_match, bool store_index_in_file)
+                       bool* expect_bloom_not_match, bool store_index_in_file,
+                       uint32_t column_family_id,
+                       const std::string& column_family_name)
       : PlainTableReader(ioptions, std::move(file), env_options, icomparator,
                          encoding_type, file_size, table_properties),
         expect_bloom_not_match_(expect_bloom_not_match) {
@@ -222,6 +277,8 @@ class TestPlainTableReader : public PlainTableReader {
     EXPECT_TRUE(s.ok());
 
     TableProperties* props = const_cast<TableProperties*>(table_properties);
+    EXPECT_EQ(column_family_id, static_cast<uint32_t>(props->column_family_id));
+    EXPECT_EQ(column_family_name, props->column_family_name);
     if (store_index_in_file) {
       auto bloom_version_ptr = props->user_collected_properties.find(
           PlainTablePropertyNames::kBloomVersion);
@@ -254,35 +311,39 @@ extern const uint64_t kPlainTableMagicNumber;
 class TestPlainTableFactory : public PlainTableFactory {
  public:
   explicit TestPlainTableFactory(bool* expect_bloom_not_match,
-                                 const PlainTableOptions& options)
+                                 const PlainTableOptions& options,
+                                 uint32_t column_family_id,
+                                 std::string column_family_name)
       : PlainTableFactory(options),
         bloom_bits_per_key_(options.bloom_bits_per_key),
         hash_table_ratio_(options.hash_table_ratio),
         index_sparseness_(options.index_sparseness),
         store_index_in_file_(options.store_index_in_file),
-        expect_bloom_not_match_(expect_bloom_not_match) {}
+        expect_bloom_not_match_(expect_bloom_not_match),
+        column_family_id_(column_family_id),
+        column_family_name_(std::move(column_family_name)) {}
 
-  Status NewTableReader(const TableReaderOptions& table_reader_options,
-                        unique_ptr<RandomAccessFileReader>&& file,
-                        uint64_t file_size,
-                        unique_ptr<TableReader>* table) const override {
+  Status NewTableReader(
+      const TableReaderOptions& table_reader_options,
+      unique_ptr<RandomAccessFileReader>&& file, uint64_t file_size,
+      unique_ptr<TableReader>* table,
+      bool prefetch_index_and_filter_in_cache) const override {
     TableProperties* props = nullptr;
     auto s =
         ReadTableProperties(file.get(), file_size, kPlainTableMagicNumber,
-                            table_reader_options.ioptions.env,
-                            table_reader_options.ioptions.info_log, &props);
+                            table_reader_options.ioptions, &props);
     EXPECT_TRUE(s.ok());
 
     if (store_index_in_file_) {
       BlockHandle bloom_block_handle;
       s = FindMetaBlock(file.get(), file_size, kPlainTableMagicNumber,
-                        table_reader_options.ioptions.env,
+                        table_reader_options.ioptions,
                         BloomBlockBuilder::kBloomBlock, &bloom_block_handle);
       EXPECT_TRUE(s.ok());
 
       BlockHandle index_block_handle;
       s = FindMetaBlock(file.get(), file_size, kPlainTableMagicNumber,
-                        table_reader_options.ioptions.env,
+                        table_reader_options.ioptions,
                         PlainTableIndexBuilder::kPlainTableIndexBlock,
                         &index_block_handle);
       EXPECT_TRUE(s.ok());
@@ -300,7 +361,7 @@ class TestPlainTableFactory : public PlainTableFactory {
         table_reader_options.internal_comparator, encoding_type, file_size,
         bloom_bits_per_key_, hash_table_ratio_, index_sparseness_, props,
         std::move(file), table_reader_options.ioptions, expect_bloom_not_match_,
-        store_index_in_file_));
+        store_index_in_file_, column_family_id_, column_family_name_));
 
     *table = std::move(new_reader);
     return s;
@@ -312,6 +373,8 @@ class TestPlainTableFactory : public PlainTableFactory {
   size_t index_sparseness_;
   bool store_index_in_file_;
   bool* expect_bloom_not_match_;
+  const uint32_t column_family_id_;
+  const std::string column_family_name_;
 };
 
 TEST_P(PlainTableDBTest, Flush) {
@@ -322,10 +385,6 @@ TEST_P(PlainTableDBTest, Flush) {
       for (int total_order = 0; total_order <= 1; total_order++) {
         for (int store_index_in_file = 0; store_index_in_file <= 1;
              ++store_index_in_file) {
-          if (!bloom_bits && store_index_in_file) {
-            continue;
-          }
-
           Options options = CurrentOptions();
           options.create_if_missing = true;
           // Set only one bucket to force bucket conflict.
@@ -438,7 +497,8 @@ TEST_P(PlainTableDBTest, Flush2) {
         plain_table_options.encoding_type = encoding_type;
         plain_table_options.store_index_in_file = store_index_in_file;
         options.table_factory.reset(new TestPlainTableFactory(
-            &expect_bloom_not_match, plain_table_options));
+            &expect_bloom_not_match, plain_table_options,
+            0 /* column_family_id */, kDefaultColumnFamilyName));
 
         DestroyAndReopen(&options);
         ASSERT_OK(Put("0000000000000bar", "b"));
@@ -507,7 +567,8 @@ TEST_P(PlainTableDBTest, Iterator) {
           plain_table_options.encoding_type = encoding_type;
 
           options.table_factory.reset(new TestPlainTableFactory(
-              &expect_bloom_not_match, plain_table_options));
+              &expect_bloom_not_match, plain_table_options,
+              0 /* column_family_id */, kDefaultColumnFamilyName));
         } else {
           PlainTableOptions plain_table_options;
           plain_table_options.user_key_len = 16;
@@ -518,7 +579,8 @@ TEST_P(PlainTableDBTest, Iterator) {
           plain_table_options.encoding_type = encoding_type;
 
           options.table_factory.reset(new TestPlainTableFactory(
-              &expect_bloom_not_match, plain_table_options));
+              &expect_bloom_not_match, plain_table_options,
+              0 /* column_family_id */, kDefaultColumnFamilyName));
         }
         DestroyAndReopen(&options);
 

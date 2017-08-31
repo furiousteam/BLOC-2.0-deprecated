@@ -1,7 +1,7 @@
-//  Copyright (c) 2013, Facebook, Inc.  All rights reserved.
-//  This source code is licensed under the BSD-style license found in the
-//  LICENSE file in the root directory of this source tree. An additional grant
-//  of patent rights can be found in the PATENTS file in the same directory.
+//  Copyright (c) 2011-present, Facebook, Inc.  All rights reserved.
+//  This source code is licensed under both the GPLv2 (found in the
+//  COPYING file in the root directory) and Apache 2.0 License
+//  (found in the LICENSE.Apache file in the root directory).
 //
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -43,7 +43,7 @@ namespace log {
  * Data is written out in kBlockSize chunks. If next record does not fit
  * into the space left, the leftover space will be padded with \0.
  *
- * Record format:
+ * Legacy record format:
  *
  * +---------+-----------+-----------+--- ... ---+
  * |CRC (4B) | Size (2B) | Type (1B) | Payload   |
@@ -57,13 +57,23 @@ namespace log {
  *        blocks that are larger than kBlockSize
  * Payload = Byte stream as long as specified by the payload size
  *
+ * Recyclable record format:
+ *
+ * +---------+-----------+-----------+----------------+--- ... ---+
+ * |CRC (4B) | Size (2B) | Type (1B) | Log number (4B)| Payload   |
+ * +---------+-----------+-----------+----------------+--- ... ---+
+ *
+ * Same as above, with the addition of
+ * Log number = 32bit log file number, so that we can distinguish between
+ * records written by the most recent log writer vs a previous one.
  */
 class Writer {
  public:
   // Create a writer that will append data to "*dest".
   // "*dest" must be initially empty.
   // "*dest" must remain live while this Writer is in use.
-  explicit Writer(unique_ptr<WritableFileWriter>&& dest);
+  explicit Writer(unique_ptr<WritableFileWriter>&& dest, uint64_t log_number,
+                  bool recycle_log_files, bool manual_flush = false);
   ~Writer();
 
   Status AddRecord(const Slice& slice);
@@ -71,9 +81,15 @@ class Writer {
   WritableFileWriter* file() { return dest_.get(); }
   const WritableFileWriter* file() const { return dest_.get(); }
 
+  uint64_t get_log_number() const { return log_number_; }
+
+  Status WriteBuffer();
+
  private:
   unique_ptr<WritableFileWriter> dest_;
-  int block_offset_;       // Current offset in block
+  size_t block_offset_;       // Current offset in block
+  uint64_t log_number_;
+  bool recycle_log_files_;
 
   // crc32c values for all supported record types.  These are
   // pre-computed to reduce the overhead of computing the crc of the
@@ -81,6 +97,10 @@ class Writer {
   uint32_t type_crc_[kMaxRecordType + 1];
 
   Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
+
+  // If true, it does not flush after each write. Instead it relies on the upper
+  // layer to manually does the flush by calling ::WriteBuffer()
+  bool manual_flush_;
 
   // No copying allowed
   Writer(const Writer&);
