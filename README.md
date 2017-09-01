@@ -42,8 +42,8 @@ If you are building on an older processor without AVX support, add the following
 -DPORTABLE=1 -DWITH_AVX2=0
 ```
 
-And then Build from within MS Visual Studio. Youu may find it helpful to explicitly include Boost library paths:
+And then Build from within MS Visual Studio. You may find it helpful to explicitly include Boost library paths:
 
 ```
-cmake -DBOOST_ROOT="C:\boost_1_64_0_built" -DBOOST_INCLUDEDIR="C:/boost_1_64_0_built/lib32-msvc-14.1" -DBOOST_LIBRARYDIR="C:\boost_1_64_0_built\libs"
+cmake -G -DBOOST_ROOT="C:\boost_1_64_0_built" -DBOOST_INCLUDEDIR="C:/boost_1_64_0_built/lib32-msvc-14.1" -DBOOST_LIBRARYDIR="C:\boost_1_64_0_built\libs" ..
  ```
