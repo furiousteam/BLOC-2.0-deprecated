@@ -29,11 +29,17 @@ Dependencies: MSVC 2013 or later, CMake 2.8.6 or later, and Boost 1.55. You may 
 * http://www.cmake.org/
 * http://www.boost.org/
 
-To build, change to a directory where this file is located, and run theas commands: 
+To build, change to a directory where this file is located, and run these commands: 
 ```
 mkdir build
 cd build
 cmake -G "Visual Studio 12 Win64" ..
+```
+
+If you are building on an older processor without AVX support, add the following options to cmake:
+
+```
+-DPORTABLE=1 -DWITH_AVX2=0
 ```
 
 And then Build from within MS Visual Studio. Youu may find it helpful to explicitly include Boost library paths:
