@@ -2068,6 +2068,12 @@ void WalletGreen::sendTransaction(const CryptoNote::Transaction& cryptoNoteTrans
 size_t WalletGreen::validateSaveAndSendTransaction(const ITransactionReader& transaction, const std::vector<WalletTransfer>& destinations, bool isFusion, bool send) {
   BinaryArray transactionData = transaction.getTransactionData();
 
+  if (isFusion) {
+	  m_logger(DEBUGGING) << "Fusion transactions temporarily disabled until network is more mature! Rejecting txn "
+		  << transaction.getTransactionHash();
+	  throw std::system_error(make_error_code(error::INTERNAL_WALLET_ERROR), "Fusion transaction rejected");
+  }
+
   if (transactionData.size() > m_upperTransactionSizeLimit) {
     m_logger(ERROR, BRIGHT_RED) << "Transaction is too big. Transaction hash " << transaction.getTransactionHash() <<
       ", size " << transactionData.size() << ", size limit " << m_upperTransactionSizeLimit;
