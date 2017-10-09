@@ -412,6 +412,58 @@ void WalletGreen::exportWallet(const std::string& path, bool encrypt, WalletSave
   m_logger(INFO, BRIGHT_WHITE) << "Container exported";
 }
 
+void WalletGreen::resetPendingTransactions() {
+
+	m_logger(INFO, BRIGHT_WHITE) << "Clearing transaction data";
+
+	System::EventLock lk(m_readyEvent);
+
+	try 
+	{
+		//purge from wallet
+		throwIfNotInitialized();
+		throwIfStopped();
+		throwIfTrackingMode();
+
+		auto txns = getUnconfirmedTransactions();
+
+		m_logger(INFO, BRIGHT_WHITE) << "Purging " << txns.size() << " transactions...";
+
+		for (auto thisTrans : txns) {
+
+			// WalletTransaction transaction
+			m_logger(INFO, BRIGHT_WHITE) << "Found unconfirmed TXN " << thisTrans.transaction.hash << " " << thisTrans.transaction.state << " block height " <<
+				thisTrans.transaction.blockHeight;
+
+			//TODO purge from pool?
+
+			//updateTransactionStateAndPushEvent(i, WalletTransactionState::DELETED);
+			try {
+				
+				Tools::ScopeExit releaseContext([this, &thisTrans] {
+					m_dispatcher.yield();					
+				});
+
+				removeUnconfirmedTransaction(thisTrans.transaction.hash);
+			}
+			catch (...) {
+				m_logger(ERROR, BRIGHT_RED) << "eRROR purging txn " << thisTrans.transaction.hash;
+			}
+
+			m_logger(INFO, BRIGHT_WHITE) << "Finished purging txn";
+		}		
+	}
+	catch (const std::exception& e) {
+		m_logger(ERROR, BRIGHT_RED) << "Failed to remove unconfirmed txn: " << e.what();
+	}
+	
+	/*
+	stopBlockchainSynchronizer();
+	clearCaches(false, true);
+	subscribeWallets();
+	*/
+}
+
 void WalletGreen::load(const std::string& path, const std::string& password, std::string& extra) {
   m_logger(INFO, BRIGHT_WHITE) << "Loading container...";
 
@@ -517,6 +569,8 @@ void WalletGreen::loadContainerStorage(const std::string& path) {
     decryptKeyPair(prefix->encryptedViewKeys, m_viewPublicKey, m_viewSecretKey, creationTimestamp);
     throwIfKeysMismatch(m_viewSecretKey, m_viewPublicKey, "Restored view public key doesn't correspond to secret key");
     m_logger = Logging::LoggerRef(m_logger.getLogger(), "WalletGreen/" + podToHex(m_viewPublicKey).substr(0, 5));
+
+	//m_logger(DEBUGGING) << "Loaded wallet with private view key " << m_viewSecretKey << " ; public spend key " << m_viewPublicKey;
 
     loadSpendKeys();
 
@@ -733,8 +787,10 @@ void WalletGreen::loadSpendKeys() {
     } else {
       if (!Crypto::check_key(wallet.spendPublicKey)) {
         throw std::system_error(make_error_code(error::WRONG_PASSWORD), "Public spend key is incorrect");
-      }
+	  }
     }
+
+	//m_logger(DEBUGGING) << "Loaded wallet with private spend key " << wallet.spendSecretKey << " ; public spend key " << wallet.spendPublicKey;
 
     wallet.actualBalance = 0;
     wallet.pendingBalance = 0;

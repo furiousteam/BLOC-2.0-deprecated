@@ -50,7 +50,7 @@
 using namespace PaymentService;
 
 void changeDirectory(const std::string& path) {
-  if (chdir(path.c_str())) {
+  if (_chdir(path.c_str())) {
     throw std::runtime_error("Couldn't change directory to \'" + path + "\': " + strerror(errno));
   }
 }
