@@ -50,9 +50,15 @@
 using namespace PaymentService;
 
 void changeDirectory(const std::string& path) {
+#ifdef _WIN32
   if (_chdir(path.c_str())) {
     throw std::runtime_error("Couldn't change directory to \'" + path + "\': " + strerror(errno));
   }
+#else
+  if (chdir(path.c_str())) {
+	throw std::runtime_error("Couldn't change directory to \'" + path + "\': " + strerror(errno));
+  }
+#endif
 }
 
 void stopSignalHandler(PaymentGateService* pg) {
