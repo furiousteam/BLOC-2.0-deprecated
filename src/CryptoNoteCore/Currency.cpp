@@ -174,9 +174,15 @@ bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size
 
 size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
   assert(height <= std::numeric_limits<uint64_t>::max() / m_maxBlockSizeGrowthSpeedNumerator);
+  bool allowLargeBlockSize = false;
+  if (height >= m_upgradeHeightMaxBlockSize && height % m_maxBlockSizeAllowedEveryNTx == 0)
+	  allowLargeBlockSize = true;
+
   size_t maxSize = static_cast<size_t>(m_maxBlockSizeInitial +
-    (height * m_maxBlockSizeGrowthSpeedNumerator) / m_maxBlockSizeGrowthSpeedDenominator);
+	(height * (allowLargeBlockSize ? m_maxBlockSizeGrowthSpeedNumeratorV2 : m_maxBlockSizeGrowthSpeedNumerator))
+	/ m_maxBlockSizeGrowthSpeedDenominator);
   assert(maxSize >= m_maxBlockSizeInitial);
+  logger(TRACE) << "Block " << height << " max size " << maxSize;
   return maxSize;
 }
 
@@ -551,6 +557,8 @@ m_difficultyWindow(currency.m_difficultyWindow),
 m_difficultyLag(currency.m_difficultyLag),
 m_difficultyCut(currency.m_difficultyCut),
 m_maxBlockSizeInitial(currency.m_maxBlockSizeInitial),
+m_maxBlockSizeGrowthSpeedNumeratorV2(currency.m_maxBlockSizeGrowthSpeedNumeratorV2),
+m_maxBlockSizeAllowedEveryNTx(currency.m_maxBlockSizeAllowedEveryNTx),
 m_maxBlockSizeGrowthSpeedNumerator(currency.m_maxBlockSizeGrowthSpeedNumerator),
 m_maxBlockSizeGrowthSpeedDenominator(currency.m_maxBlockSizeGrowthSpeedDenominator),
 m_lockedTxAllowedDeltaSeconds(currency.m_lockedTxAllowedDeltaSeconds),
@@ -560,6 +568,7 @@ m_numberOfPeriodsToForgetTxDeletedFromPool(currency.m_numberOfPeriodsToForgetTxD
 m_fusionTxMaxSize(currency.m_fusionTxMaxSize),
 m_fusionTxMinInputCount(currency.m_fusionTxMinInputCount),
 m_fusionTxMinInOutCountRatio(currency.m_fusionTxMinInOutCountRatio),
+m_upgradeHeightMaxBlockSize(currency.m_upgradeHeightMaxBlockSize),
 m_upgradeHeightV2(currency.m_upgradeHeightV2),
 m_upgradeHeightV3(currency.m_upgradeHeightV3),
 m_upgradeVotingThreshold(currency.m_upgradeVotingThreshold),
@@ -603,6 +612,8 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
   difficultyCut(parameters::DIFFICULTY_CUT);
 
   maxBlockSizeInitial(parameters::MAX_BLOCK_SIZE_INITIAL);
+  maxBlockSizeAllowedEveryNTx(parameters::MAX_BLOCK_SIZE_ALLOWED_EVERY_N_TX);
+  maxBlockSizeGrowthSpeedNumeratorV2(parameters::MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR_V2);
   maxBlockSizeGrowthSpeedNumerator(parameters::MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR);
   maxBlockSizeGrowthSpeedDenominator(parameters::MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR);
 
@@ -616,7 +627,8 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
   fusionTxMaxSize(parameters::FUSION_TX_MAX_SIZE);
   fusionTxMinInputCount(parameters::FUSION_TX_MIN_INPUT_COUNT);
   fusionTxMinInOutCountRatio(parameters::FUSION_TX_MIN_IN_OUT_COUNT_RATIO);
-
+  
+  upgradeHeightMaxBlockSize(parameters::UPGRADE_HEIGHT_MAX_BLOCK_SIZE);
   upgradeHeightV2(parameters::UPGRADE_HEIGHT_V2);
   upgradeHeightV3(parameters::UPGRADE_HEIGHT_V3);
   upgradeVotingThreshold(parameters::UPGRADE_VOTING_THRESHOLD);

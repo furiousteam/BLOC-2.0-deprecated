@@ -165,6 +165,8 @@ private:
   size_t m_difficultyCut;
 
   size_t m_maxBlockSizeInitial;
+  uint64_t m_maxBlockSizeGrowthSpeedNumeratorV2;
+  size_t m_maxBlockSizeAllowedEveryNTx;
   uint64_t m_maxBlockSizeGrowthSpeedNumerator;
   uint64_t m_maxBlockSizeGrowthSpeedDenominator;
 
@@ -179,6 +181,7 @@ private:
   size_t m_fusionTxMinInputCount;
   size_t m_fusionTxMinInOutCountRatio;
 
+  uint32_t m_upgradeHeightMaxBlockSize;
   uint32_t m_upgradeHeightV2;
   uint32_t m_upgradeHeightV3;
   unsigned int m_upgradeVotingThreshold;
@@ -242,6 +245,8 @@ public:
 
   CurrencyBuilder& maxBlockSizeInitial(size_t val) { m_currency.m_maxBlockSizeInitial = val; return *this; }
   CurrencyBuilder& maxBlockSizeGrowthSpeedNumerator(uint64_t val) { m_currency.m_maxBlockSizeGrowthSpeedNumerator = val; return *this; }
+  CurrencyBuilder& maxBlockSizeAllowedEveryNTx(uint64_t val) { m_currency.m_maxBlockSizeAllowedEveryNTx = val; return *this; }
+  CurrencyBuilder& maxBlockSizeGrowthSpeedNumeratorV2(uint64_t val) { m_currency.m_maxBlockSizeGrowthSpeedNumeratorV2 = val; return *this; }
   CurrencyBuilder& maxBlockSizeGrowthSpeedDenominator(uint64_t val) { m_currency.m_maxBlockSizeGrowthSpeedDenominator = val; return *this; }
 
   CurrencyBuilder& lockedTxAllowedDeltaSeconds(uint64_t val) { m_currency.m_lockedTxAllowedDeltaSeconds = val; return *this; }
@@ -255,6 +260,7 @@ public:
   CurrencyBuilder& fusionTxMinInputCount(size_t val) { m_currency.m_fusionTxMinInputCount = val; return *this; }
   CurrencyBuilder& fusionTxMinInOutCountRatio(size_t val) { m_currency.m_fusionTxMinInOutCountRatio = val; return *this; }
 
+  CurrencyBuilder& upgradeHeightMaxBlockSize(uint32_t val) { m_currency.m_upgradeHeightMaxBlockSize = val; return *this; }
   CurrencyBuilder& upgradeHeightV2(uint32_t val) { m_currency.m_upgradeHeightV2 = val; return *this; }
   CurrencyBuilder& upgradeHeightV3(uint32_t val) { m_currency.m_upgradeHeightV3 = val; return *this; }
   CurrencyBuilder& upgradeVotingThreshold(unsigned int val);
