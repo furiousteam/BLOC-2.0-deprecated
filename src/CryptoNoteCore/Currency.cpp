@@ -175,7 +175,7 @@ bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size
 size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
   assert(height <= std::numeric_limits<uint64_t>::max() / m_maxBlockSizeGrowthSpeedNumerator);
   bool allowLargeBlockSize = false;
-  if (height >= m_upgradeHeightMaxBlockSize && height % m_maxBlockSizeAllowedEveryNTx == 0)
+  if (height >= m_upgradeHeightMaxBlockSize && height % m_maxBlockSizeAllowedEveryNBlock == 0)
 	  allowLargeBlockSize = true;
 
   size_t maxSize = static_cast<size_t>(m_maxBlockSizeInitial +
@@ -558,7 +558,7 @@ m_difficultyLag(currency.m_difficultyLag),
 m_difficultyCut(currency.m_difficultyCut),
 m_maxBlockSizeInitial(currency.m_maxBlockSizeInitial),
 m_maxBlockSizeGrowthSpeedNumeratorV2(currency.m_maxBlockSizeGrowthSpeedNumeratorV2),
-m_maxBlockSizeAllowedEveryNTx(currency.m_maxBlockSizeAllowedEveryNTx),
+m_maxBlockSizeAllowedEveryNBlock(currency.m_maxBlockSizeAllowedEveryNBlock),
 m_maxBlockSizeGrowthSpeedNumerator(currency.m_maxBlockSizeGrowthSpeedNumerator),
 m_maxBlockSizeGrowthSpeedDenominator(currency.m_maxBlockSizeGrowthSpeedDenominator),
 m_lockedTxAllowedDeltaSeconds(currency.m_lockedTxAllowedDeltaSeconds),
@@ -612,7 +612,7 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
   difficultyCut(parameters::DIFFICULTY_CUT);
 
   maxBlockSizeInitial(parameters::MAX_BLOCK_SIZE_INITIAL);
-  maxBlockSizeAllowedEveryNTx(parameters::MAX_BLOCK_SIZE_ALLOWED_EVERY_N_TX);
+  maxBlockSizeAllowedEveryNBlock(parameters::MAX_BLOCK_SIZE_ALLOWED_EVERY_N_BLOCK);
   maxBlockSizeGrowthSpeedNumeratorV2(parameters::MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR_V2);
   maxBlockSizeGrowthSpeedNumerator(parameters::MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR);
   maxBlockSizeGrowthSpeedDenominator(parameters::MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR);

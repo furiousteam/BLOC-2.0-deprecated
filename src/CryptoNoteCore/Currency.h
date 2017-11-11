@@ -166,7 +166,7 @@ private:
 
   size_t m_maxBlockSizeInitial;
   uint64_t m_maxBlockSizeGrowthSpeedNumeratorV2;
-  size_t m_maxBlockSizeAllowedEveryNTx;
+  size_t m_maxBlockSizeAllowedEveryNBlock;
   uint64_t m_maxBlockSizeGrowthSpeedNumerator;
   uint64_t m_maxBlockSizeGrowthSpeedDenominator;
 
@@ -245,7 +245,7 @@ public:
 
   CurrencyBuilder& maxBlockSizeInitial(size_t val) { m_currency.m_maxBlockSizeInitial = val; return *this; }
   CurrencyBuilder& maxBlockSizeGrowthSpeedNumerator(uint64_t val) { m_currency.m_maxBlockSizeGrowthSpeedNumerator = val; return *this; }
-  CurrencyBuilder& maxBlockSizeAllowedEveryNTx(uint64_t val) { m_currency.m_maxBlockSizeAllowedEveryNTx = val; return *this; }
+  CurrencyBuilder& maxBlockSizeAllowedEveryNBlock(uint64_t val) { m_currency.m_maxBlockSizeAllowedEveryNBlock = val; return *this; }
   CurrencyBuilder& maxBlockSizeGrowthSpeedNumeratorV2(uint64_t val) { m_currency.m_maxBlockSizeGrowthSpeedNumeratorV2 = val; return *this; }
   CurrencyBuilder& maxBlockSizeGrowthSpeedDenominator(uint64_t val) { m_currency.m_maxBlockSizeGrowthSpeedDenominator = val; return *this; }
 
