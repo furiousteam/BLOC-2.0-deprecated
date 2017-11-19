@@ -512,13 +512,14 @@ Difficulty Core::getDifficultyForNextBlock() const {
   IBlockchainCache* mainChain = chainsLeaves[0];
 
   uint32_t topBlockIndex = mainChain->getTopBlockIndex();
+  auto blockMajorVersion = getBlockMajorVersionForHeight(topBlockIndex);
 
-  size_t blocksCount = std::min(static_cast<size_t>(topBlockIndex), currency.difficultyBlocksCount());
+  size_t blocksCount = std::min(static_cast<size_t>(topBlockIndex), currency.difficultyBlocksCount(topBlockIndex));
 
   auto timestamps = mainChain->getLastTimestamps(blocksCount);
-  auto difficulties = mainChain->getLastCumulativeDifficulties(blocksCount);
+  auto difficulties = mainChain->getLastCumulativeDifficulties(blocksCount);  
 
-  return currency.nextDifficulty(timestamps, difficulties);
+  return currency.nextDifficulty(blockMajorVersion, timestamps, difficulties);
 }
 
 std::vector<Crypto::Hash> Core::findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds,

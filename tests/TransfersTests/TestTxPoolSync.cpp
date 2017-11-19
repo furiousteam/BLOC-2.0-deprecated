@@ -360,8 +360,8 @@ namespace {
     ASSERT_FALSE(static_cast<bool>(wallet2.init()));
 
     uint32_t blockchainLenght = 1;
-    ASSERT_TRUE(mineBlocks(*nodeDaemons[NODE_0], wallet0.address(), m_currency.difficultyBlocksCount()));
-    blockchainLenght += static_cast<uint32_t>(m_currency.difficultyBlocksCount());
+    ASSERT_TRUE(mineBlocks(*nodeDaemons[NODE_0], wallet0.address(), m_currency.difficultyBlocksCount(blockchainLenght)));
+    blockchainLenght += static_cast<uint32_t>(m_currency.difficultyBlocksCount(blockchainLenght));
 
     wallet1.waitForSynchronizationToHeight(blockchainLenght);
     wallet2.waitForSynchronizationToHeight(blockchainLenght);

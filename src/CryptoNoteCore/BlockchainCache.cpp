@@ -22,6 +22,7 @@
 
 #include <boost/functional/hash.hpp>
 
+#include "Core.h";
 #include "Common/StdInputStream.h"
 #include "Common/StdOutputStream.h"
 #include "Common/ShuffleGenerator.h"
@@ -1123,10 +1124,11 @@ Difficulty BlockchainCache::getDifficultyForNextBlock() const {
 
 Difficulty BlockchainCache::getDifficultyForNextBlock(uint32_t blockIndex) const {
   assert(blockIndex <= getTopBlockIndex());
-  auto timestamps = getLastTimestamps(currency.difficultyBlocksCount(), blockIndex, skipGenesisBlock);
+  auto timestamps = getLastTimestamps(currency.difficultyBlocksCount(blockIndex), blockIndex, skipGenesisBlock);
   auto commulativeDifficulties =
-      getLastCumulativeDifficulties(currency.difficultyBlocksCount(), blockIndex, skipGenesisBlock);
-  return currency.nextDifficulty(std::move(timestamps), std::move(commulativeDifficulties));
+      getLastCumulativeDifficulties(currency.difficultyBlocksCount(blockIndex), blockIndex, skipGenesisBlock);
+  return currency.nextDifficulty(currency.blockVersionByHeight(blockIndex),
+	  std::move(timestamps), std::move(commulativeDifficulties));
 }
 
 Difficulty BlockchainCache::getCurrentCumulativeDifficulty() const {

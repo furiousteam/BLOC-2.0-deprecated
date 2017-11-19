@@ -1332,10 +1332,11 @@ Difficulty DatabaseBlockchainCache::getDifficultyForNextBlock() const {
 
 Difficulty DatabaseBlockchainCache::getDifficultyForNextBlock(uint32_t blockIndex) const {
   assert(blockIndex <= getTopBlockIndex());
-  auto timestamps = getLastTimestamps(currency.difficultyBlocksCount(), blockIndex, UseGenesis{false});
+  auto timestamps = getLastTimestamps(currency.difficultyBlocksCount(blockIndex), blockIndex, UseGenesis{false});
   auto commulativeDifficulties =
-      getLastCumulativeDifficulties(currency.difficultyBlocksCount(), blockIndex, UseGenesis{false});
-  return currency.nextDifficulty(std::move(timestamps), std::move(commulativeDifficulties));
+      getLastCumulativeDifficulties(currency.difficultyBlocksCount(blockIndex), blockIndex, UseGenesis{false});
+  return currency.nextDifficulty(currency.blockVersionByHeight(blockIndex), 
+	  std::move(timestamps), std::move(commulativeDifficulties));
 }
 
 Difficulty DatabaseBlockchainCache::getCurrentCumulativeDifficulty() const {
