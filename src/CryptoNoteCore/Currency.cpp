@@ -19,6 +19,7 @@
 #include <cctype>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
+#include "../Common/Math.h"
 #include "../Common/Base58.h"
 #include "../Common/int-util.h"
 #include "../Common/StringTools.h"
@@ -31,6 +32,9 @@
 #include "UpgradeDetector.h"
 
 #undef ERROR
+
+#define MAX_AVERAGE_TIMESPAN          (uint64_t) m_difficultyTarget*12   // 24 minutes
+#define MIN_AVERAGE_TIMESPAN          (uint64_t) m_difficultyTarget/12  // 10s
 
 using namespace Logging;
 using namespace Common;
@@ -182,7 +186,7 @@ size_t Currency::maxBlockCumulativeSize(uint64_t height) const {
 	(height * (allowLargeBlockSize ? m_maxBlockSizeGrowthSpeedNumeratorV2 : m_maxBlockSizeGrowthSpeedNumerator))
 	/ m_maxBlockSizeGrowthSpeedDenominator);
   assert(maxSize >= m_maxBlockSizeInitial);
-  logger(TRACE) << "Block " << height << " max size " << maxSize;
+  //logger(TRACE) << "Block " << height << " max size " << maxSize;
   return maxSize;
 }
 
@@ -457,6 +461,93 @@ Difficulty Currency::nextDifficulty(std::vector<uint64_t> timestamps,
   return (low + timeSpan - 1) / timeSpan;
 }
 
+Difficulty Currency::nextDifficulty_v2(std::vector<uint64_t> timestamps,
+	std::vector<Difficulty> cumulativeDifficulties) const {
+	assert(m_difficultyWindow_v2 >= 2);
+
+	if (timestamps.size() > m_difficultyWindow_v2) {
+		timestamps.resize(m_difficultyWindow_v2);
+		cumulativeDifficulties.resize(m_difficultyWindow_v2);
+	}
+
+	size_t length = timestamps.size();
+	assert(length == cumulativeDifficulties.size());
+	assert(length <= m_difficultyWindow_v2);
+	if (length <= 1) {
+		return 1;
+	}
+
+	sort(timestamps.begin(), timestamps.end());
+
+	size_t cutBegin, cutEnd;
+	assert(2 * m_difficultyCut_v2 <= m_difficultyWindow_v2 - 2);
+	if (length <= m_difficultyWindow_v2 - 2 * m_difficultyCut_v2) {
+		cutBegin = 0;
+		cutEnd = length;
+	}
+	else {
+		cutBegin = (length - (m_difficultyWindow_v2 - 2 * m_difficultyCut_v2) + 1) / 2;
+		cutEnd = cutBegin + (m_difficultyWindow_v2 - 2 * m_difficultyCut_v2);
+	}
+	assert(cutBegin + 2 <= cutEnd && cutEnd <= length);
+	uint64_t totalTimespan = timestamps[cutEnd - 1] - timestamps[cutBegin];
+	if (totalTimespan == 0) {
+		totalTimespan = 1;
+	}
+
+	/// begin sumo
+
+	uint64_t timespan_median = 0;
+	if (cutBegin > 0 && length >= cutBegin * 2 + 3) {
+		std::vector<std::uint64_t> time_spans;
+		for (size_t i = length - cutBegin * 2 - 3; i < length - 1; i++) {
+			uint64_t time_span = timestamps[i + 1] - timestamps[i];
+			if (time_span == 0) {
+				time_span = 1;
+			}
+			time_spans.push_back(time_span);
+
+			logger(DEBUGGING) << "Timespan " << i << ": " << (time_span / 60) / 60 
+				<< ":" << (time_span > 3600 ? (time_span % 3600) / 60 : time_span / 60) 
+				<< ":" << time_span % 60 << " (" << time_span << ")";
+		}
+		timespan_median = Common::medianValue(time_spans);
+	}
+
+	uint64_t timespan_length = length - cutBegin * 2 - 1;
+	logger(DEBUGGING) << "Timespan Median: " << timespan_median << ", Timespan Average: " << totalTimespan / timespan_length;
+
+	uint64_t total_timespan_median = timespan_median > 0 ? timespan_median * timespan_length : totalTimespan * 7 / 10;
+	uint64_t adjusted_total_timespan = (totalTimespan * 8 + total_timespan_median * 3) / 10; //  0.8A + 0.3M (the median of a poisson distribution is 70% of the mean, so 0.25A = 0.25/0.7 = 0.285M)
+	if (adjusted_total_timespan > MAX_AVERAGE_TIMESPAN * timespan_length) {
+		adjusted_total_timespan = MAX_AVERAGE_TIMESPAN * timespan_length;
+	}
+	if (adjusted_total_timespan < MIN_AVERAGE_TIMESPAN * timespan_length) {
+		adjusted_total_timespan = MIN_AVERAGE_TIMESPAN * timespan_length;
+	}
+
+	//end sumo
+
+	Difficulty totalWork = cumulativeDifficulties[cutEnd - 1] - cumulativeDifficulties[cutBegin];
+	assert(totalWork > 0);
+
+	uint64_t low, high;
+	low = mul128(totalWork, m_difficultyTarget, &high);
+	if (high != 0 || std::numeric_limits<uint64_t>::max() - low < (totalTimespan - 1)) {
+		return 0;
+	}
+
+	//begin sumo
+	uint64_t next_diff = (low + adjusted_total_timespan - 1) / adjusted_total_timespan;
+	if (next_diff < 1) next_diff = 1;
+	logger(DEBUGGING) << "Total timespan: " << totalTimespan << ", Adjusted total timespan: "
+		<< adjusted_total_timespan << ", Total work: " << totalWork << ", Next diff: " 
+		<< next_diff << ", Hashrate (H/s): " << next_diff / m_difficultyTarget;
+
+	return next_diff;
+	//end sumo
+}
+
 bool Currency::checkProofOfWorkV1(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) const {
   if (BLOCK_MAJOR_VERSION_1 != block.getBlock().majorVersion) {
     return false;
@@ -554,8 +645,10 @@ m_mininumFee(currency.m_mininumFee),
 m_defaultDustThreshold(currency.m_defaultDustThreshold),
 m_difficultyTarget(currency.m_difficultyTarget),
 m_difficultyWindow(currency.m_difficultyWindow),
+m_difficultyWindow_v2(currency.m_difficultyWindow_v2),
 m_difficultyLag(currency.m_difficultyLag),
 m_difficultyCut(currency.m_difficultyCut),
+m_difficultyCut_v2(currency.m_difficultyCut_v2),
 m_maxBlockSizeInitial(currency.m_maxBlockSizeInitial),
 m_maxBlockSizeGrowthSpeedNumeratorV2(currency.m_maxBlockSizeGrowthSpeedNumeratorV2),
 m_maxBlockSizeAllowedEveryNBlock(currency.m_maxBlockSizeAllowedEveryNBlock),
@@ -608,8 +701,10 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
 
   difficultyTarget(parameters::DIFFICULTY_TARGET);
   difficultyWindow(parameters::DIFFICULTY_WINDOW);
+  difficultyWindowV2(parameters::DIFFICULTY_WINDOW_V2);
   difficultyLag(parameters::DIFFICULTY_LAG);
   difficultyCut(parameters::DIFFICULTY_CUT);
+  difficultyCutV2(parameters::DIFFICULTY_CUT_V2);
 
   maxBlockSizeInitial(parameters::MAX_BLOCK_SIZE_INITIAL);
   maxBlockSizeAllowedEveryNBlock(parameters::MAX_BLOCK_SIZE_ALLOWED_EVERY_N_BLOCK);
@@ -667,6 +762,14 @@ CurrencyBuilder& CurrencyBuilder::difficultyWindow(size_t val) {
   }
   m_currency.m_difficultyWindow = val;
   return *this;
+}
+
+CurrencyBuilder& CurrencyBuilder::difficultyWindowV2(size_t val) {
+	if (val < 2) {
+		throw std::invalid_argument("val at difficultyWindow()");
+	}
+	m_currency.m_difficultyWindow_v2 = val;
+	return *this;
 }
 
 CurrencyBuilder& CurrencyBuilder::upgradeVotingThreshold(unsigned int val) {

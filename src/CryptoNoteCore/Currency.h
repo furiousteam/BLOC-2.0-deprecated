@@ -60,8 +60,10 @@ public:
 
   uint64_t difficultyTarget() const { return m_difficultyTarget; }
   size_t difficultyWindow() const { return m_difficultyWindow; }
+  size_t difficultyWindowV2() const { return m_difficultyWindow_v2; }
   size_t difficultyLag() const { return m_difficultyLag; }
   size_t difficultyCut() const { return m_difficultyCut; }
+  size_t difficultyCutV2() const { return m_difficultyCut_v2; }
   size_t difficultyBlocksCount() const { return m_difficultyWindow + m_difficultyLag; }
 
   size_t maxBlockSizeInitial() const { return m_maxBlockSizeInitial; }
@@ -118,6 +120,7 @@ public:
   bool parseAmount(const std::string& str, uint64_t& amount) const;
 
   Difficulty nextDifficulty(std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
+  Difficulty nextDifficulty_v2(std::vector<uint64_t> timestamps, std::vector<Difficulty> cumulativeDifficulties) const;
 
   bool checkProofOfWorkV1(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) const;
   bool checkProofOfWorkV2(Crypto::cn_context& context, const CachedBlock& block, Difficulty currentDifficulty) const;
@@ -163,6 +166,9 @@ private:
   size_t m_difficultyWindow;
   size_t m_difficultyLag;
   size_t m_difficultyCut;
+
+  size_t m_difficultyWindow_v2;
+  size_t m_difficultyCut_v2;
 
   size_t m_maxBlockSizeInitial;
   uint64_t m_maxBlockSizeGrowthSpeedNumeratorV2;
@@ -239,9 +245,11 @@ public:
   CurrencyBuilder& defaultDustThreshold(uint64_t val) { m_currency.m_defaultDustThreshold = val; return *this; }
 
   CurrencyBuilder& difficultyTarget(uint64_t val) { m_currency.m_difficultyTarget = val; return *this; }
-  CurrencyBuilder& difficultyWindow(size_t val);
+  CurrencyBuilder& difficultyWindow(size_t val);  
+  CurrencyBuilder& difficultyWindowV2(size_t val);
   CurrencyBuilder& difficultyLag(size_t val) { m_currency.m_difficultyLag = val; return *this; }
   CurrencyBuilder& difficultyCut(size_t val) { m_currency.m_difficultyCut = val; return *this; }
+  CurrencyBuilder& difficultyCutV2(size_t val) { m_currency.m_difficultyCut_v2 = val; return *this; }
 
   CurrencyBuilder& maxBlockSizeInitial(size_t val) { m_currency.m_maxBlockSizeInitial = val; return *this; }
   CurrencyBuilder& maxBlockSizeGrowthSpeedNumerator(uint64_t val) { m_currency.m_maxBlockSizeGrowthSpeedNumerator = val; return *this; }
