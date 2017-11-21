@@ -22,7 +22,7 @@
 
 #include <boost/functional/hash.hpp>
 
-#include "Core.h";
+#include "Core.h"
 #include "Common/StdInputStream.h"
 #include "Common/StdOutputStream.h"
 #include "Common/ShuffleGenerator.h"
