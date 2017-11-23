@@ -46,14 +46,14 @@ gen_upgrade::gen_upgrade() : m_invalidBlockIndex(0), m_checkBlockTemplateVersion
     m_coinsInCirculationBeforeUpgrade(0), m_coinsInCirculationAfterUpgrade(0) {
   CryptoNote::CurrencyBuilder currencyBuilder(m_logger);
   currencyBuilder.maxBlockSizeInitial(std::numeric_limits<size_t>::max() / 2);
-  currencyBuilder.upgradeHeightV2(std::numeric_limits<uint32_t>::max());
-  // Disable voting and never upgrade to v.3.0
-  currencyBuilder.upgradeHeightV3(CryptoNote::parameters::CRYPTONOTE_MAX_BLOCK_NUMBER);
+  currencyBuilder.upgradeHeightV2(std::numeric_limits<uint32_t>::max() / 2);
+  currencyBuilder.upgradeHeightV3(std::numeric_limits<uint32_t>::max());
   m_currency.reset(new Currency(currencyBuilder.currency()));
 
   REGISTER_CALLBACK_METHOD(gen_upgrade, markInvalidBlock);
   REGISTER_CALLBACK_METHOD(gen_upgrade, checkBlockTemplateVersionIsV1);
   REGISTER_CALLBACK_METHOD(gen_upgrade, checkBlockTemplateVersionIsV2);
+  REGISTER_CALLBACK_METHOD(gen_upgrade, checkBlockTemplateVersionIsV3);
   REGISTER_CALLBACK_METHOD(gen_upgrade, checkBlockRewardEqFee);
   REGISTER_CALLBACK_METHOD(gen_upgrade, checkBlockRewardIsZero);
   REGISTER_CALLBACK_METHOD(gen_upgrade, rememberCoinsInCirculationBeforeUpgrade);
@@ -110,7 +110,7 @@ bool gen_upgrade::generate(std::vector<test_event_entry>& events) const {
   generator.defaultMajorVersion = BLOCK_MAJOR_VERSION_2;
   generator.defaultMinorVersion = BLOCK_MINOR_VERSION_0;
 
-  if (!checkAfterUpgrade(events, generator, blk4, minerAccount)) {
+  if (!checkAfterUpgradeToV2(events, generator, blk4, minerAccount)) {
     return false;
   }
 
@@ -120,8 +120,27 @@ bool gen_upgrade::generate(std::vector<test_event_entry>& events) const {
     return false;
   }
 
-  if (!checkAfterUpgrade(events, generator, blk5, minerAccount)) {
+  if (!checkAfterUpgradeToV2(events, generator, blk5, minerAccount)) {
     return false;
+  }
+
+  //v3 upgrade
+
+  generator.defaultMajorVersion = BLOCK_MAJOR_VERSION_3;
+  generator.defaultMinorVersion = BLOCK_MINOR_VERSION_0;
+
+  if (!checkAfterUpgradeToV3(events, generator, blk5, minerAccount)) {
+	  return false;
+  }
+
+  // Create a few blocks with version 3.0
+  BlockTemplate blk6;
+  if (!makeBlocks(events, generator, blk6, blk5, minerAccount, 3, BLOCK_MAJOR_VERSION_3, BLOCK_MINOR_VERSION_0)) {
+	  return false;
+  }
+
+  if (!checkAfterUpgradeToV3(events, generator, blk6, minerAccount)) {
+	  return false;
   }
 
   return true;
@@ -152,7 +171,39 @@ bool gen_upgrade::checkBeforeUpgrade(std::vector<test_event_entry>& events, test
   return makeBlocks(events, generator, badBlock, parentBlock, minerAcc, 1, BLOCK_MAJOR_VERSION_2, BLOCK_MINOR_VERSION_0);
 }
 
-bool gen_upgrade::checkAfterUpgrade(std::vector<test_event_entry>& events, test_generator& generator,
+bool gen_upgrade::checkAfterUpgradeToV3(std::vector<test_event_entry>& events, test_generator& generator,
+	const CryptoNote::BlockTemplate& parentBlock, const CryptoNote::AccountBase& minerAcc) const {
+	// Checking 1: get_block_templare returns block with major version 2
+	DO_CALLBACK(events, "checkBlockTemplateVersionIsV3");
+
+	// Checking 2: penalty applies to transactions fee
+	// Add block to the blockchain, later it become an alternative
+	DO_CALLBACK(events, "rememberCoinsInCirculationAfterUpgrade");
+	MAKE_TX_LIST_START(events, txs, minerAcc, minerAcc, MK_COINS(1), parentBlock);
+	BlockTemplate alternativeBlk;
+	if (!generator.constructMaxSizeBlock(alternativeBlk, parentBlock, minerAcc, m_currency->rewardBlocksWindow(), txs)) {
+		return false;
+	}
+	events.push_back(populateBlock(alternativeBlk, txs));
+	DO_CALLBACK(events, "checkBlockRewardIsZero");
+
+	// Checking 3: block with version 1.0 doesn't accepted
+	BlockTemplate badBlock;
+	DO_CALLBACK(events, "markInvalidBlock");
+	if (!makeBlocks(events, generator, badBlock, parentBlock, minerAcc, 1, BLOCK_MAJOR_VERSION_1, BLOCK_MINOR_VERSION_0)) {
+		return false;
+	}
+
+	// Checking 2: block with version 1.1 doesn't accepted
+	DO_CALLBACK(events, "markInvalidBlock");
+	return makeBlocks(events, generator, badBlock, parentBlock, minerAcc, 1, BLOCK_MAJOR_VERSION_1, BLOCK_MINOR_VERSION_1);
+
+	// Checking 2: block with version 2.0 doesn't accepted
+	DO_CALLBACK(events, "markInvalidBlock");
+	return makeBlocks(events, generator, badBlock, parentBlock, minerAcc, 1, BLOCK_MAJOR_VERSION_2, BLOCK_MINOR_VERSION_0);
+}
+
+bool gen_upgrade::checkAfterUpgradeToV2(std::vector<test_event_entry>& events, test_generator& generator,
                                     const CryptoNote::BlockTemplate& parentBlock, const CryptoNote::AccountBase& minerAcc) const {
   // Checking 1: get_block_templare returns block with major version 2
   DO_CALLBACK(events, "checkBlockTemplateVersionIsV2");
@@ -203,6 +254,12 @@ bool gen_upgrade::checkBlockTemplateVersionIsV1(CryptoNote::Core& c, size_t /*ev
 bool gen_upgrade::checkBlockTemplateVersionIsV2(CryptoNote::Core& c, size_t /*evIndex*/, const std::vector<test_event_entry>& /*events*/) {
   DEFINE_TESTS_ERROR_CONTEXT("gen_upgrade::checkBlockTemplateVersionIsV2");
   CHECK_TEST_CONDITION(checkBlockTemplateVersion(c, BLOCK_MAJOR_VERSION_2, BLOCK_MINOR_VERSION_0));
+  return true;
+}
+
+bool gen_upgrade::checkBlockTemplateVersionIsV3(CryptoNote::Core& c, size_t /*evIndex*/, const std::vector<test_event_entry>& /*events*/) {
+  DEFINE_TESTS_ERROR_CONTEXT("gen_upgrade::checkBlockTemplateVersionIsV3");
+  CHECK_TEST_CONDITION(checkBlockTemplateVersion(c, BLOCK_MAJOR_VERSION_3, BLOCK_MINOR_VERSION_0));
   return true;
 }
 
