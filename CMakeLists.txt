@@ -72,7 +72,17 @@ else()
   else()
     set(ARCH_FLAG "-march=${ARCH}")
   endif()
-  set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Werror -Wno-error=extra -Wimplicit-fallthrough=2 -Wno-error=init-self -Wno-error=format-truncation -Wno-error=terminate -Wno-error=unused-const-variable -Wno-error=logical-op -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
+
+  execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
+  MESSAGE( STATUS "CXX COMPILER VERSION: " ${GCC_VERSION} )
+  if (GCC_VERSION VERSION_GREATER 7.0)
+      MESSAGE( STATUS "GCC 7 or higher found, enabling extra compiler switches" )
+      set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Werror -Wno-error=extra -Wimplicit-fallthrough=2 -Wno-error=init-self -Wno-error=format-truncation -Wno-error=terminate -Wno-error=unused-const-variable -Wno-error=logical-op -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
+  else()
+      set(WARNINGS "-Wall -Wextra -Wpointer-arith -Wundef -Wvla -Wwrite-strings -Werror -Wno-error=extra -Wno-error=logical-op -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=unused-function -Wno-error=deprecated-declarations -Wno-error=sign-compare -Wno-error=strict-aliasing -Wno-error=type-limits -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=undef -Wno-error=uninitialized -Wno-error=unused-result")
+  endif()
+
   if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     set(WARNINGS "${WARNINGS} -Wno-error=mismatched-tags -Wno-error=null-conversion -Wno-overloaded-shift-op-parentheses -Wno-error=shift-count-overflow -Wno-error=tautological-constant-out-of-range-compare -Wno-error=unused-private-field -Wno-error=unneeded-internal-declaration -Wno-error=unused-function -Wno-error=missing-braces")
   else()
