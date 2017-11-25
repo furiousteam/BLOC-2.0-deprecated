@@ -133,7 +133,7 @@ size_t Currency::blockGrantedFullRewardZoneByBlockVersion(uint8_t blockMajorVers
 }
 
 size_t Currency::difficultyBlocksCount(uint32_t height) const { 
-	if (height <= m_upgradeHeightV2)
+	if (height < m_upgradeHeightV3)
 		return m_difficultyWindow + m_difficultyLag; 
 	else
 		return m_difficultyWindow_v2;
