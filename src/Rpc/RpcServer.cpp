@@ -121,10 +121,6 @@ std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction
   { "/get_transaction_hashes_by_payment_id.bin", { binMethod<COMMAND_RPC_GET_TRANSACTION_HASHES_BY_PAYMENT_ID>(&RpcServer::onGetTransactionHashesByPaymentId), false } },
 
   // json handlers
-  { "f_blocks_list_json",{ jsonMethod<F_COMMAND_RPC_GET_BLOCKS_LIST>(&RpcServer::f_on_blocks_list_json), false } },
-  { "f_block_json",{ jsonMethod<F_COMMAND_RPC_GET_BLOCK_DETAILS>(&RpcServer::f_on_block_json), false } },
-  { "f_transaction_json", { jsonMethod<F_COMMAND_RPC_GET_TRANSACTION_DETAILS>(&RpcServer::f_on_transaction_json), false } },
-  { "f_on_transactions_pool_json",{ jsonMethod<F_COMMAND_RPC_GET_POOL>(&RpcServer::f_on_transactions_pool_json), false } },
   { "/getinfo", { jsonMethod<COMMAND_RPC_GET_INFO>(&RpcServer::on_get_info), true } },
   { "/getheight", { jsonMethod<COMMAND_RPC_GET_HEIGHT>(&RpcServer::on_get_height), true } },
   { "/gettransactions", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS>(&RpcServer::on_get_transactions), false } },
@@ -177,6 +173,10 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
     jsonResponse.setId(jsonRequest.getId()); // copy id
 
     static std::unordered_map<std::string, RpcServer::RpcHandler<JsonMemberMethod>> jsonRpcHandlers = {
+	  { "f_blocks_list_json",{ makeMemberMethod(&RpcServer::f_on_blocks_list_json), false } },
+	  { "f_block_json",{ makeMemberMethod(&RpcServer::f_on_block_json), false } },
+	  { "f_transaction_json",{ makeMemberMethod(&RpcServer::f_on_transaction_json), false } },
+	  { "f_on_transactions_pool_json",{ makeMemberMethod(&RpcServer::f_on_transactions_pool_json), false } },
       { "getblockcount", { makeMemberMethod(&RpcServer::on_getblockcount), true } },
       { "on_getblockhash", { makeMemberMethod(&RpcServer::on_getblockhash), false } },
       { "getblocktemplate", { makeMemberMethod(&RpcServer::on_getblocktemplate), false } },
