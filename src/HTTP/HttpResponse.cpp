@@ -56,6 +56,7 @@ namespace CryptoNote {
 HttpResponse::HttpResponse() {
   status = STATUS_200;
   headers["Server"] = "Intense Coin HTTP server";
+  headers["Access-Control-Allow-Origin"] = "*";
 }
 
 void HttpResponse::setStatus(HTTP_STATUS s) {
