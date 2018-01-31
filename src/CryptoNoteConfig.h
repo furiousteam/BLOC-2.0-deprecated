@@ -28,44 +28,50 @@ namespace parameters {
 const uint32_t CRYPTONOTE_MAX_BLOCK_NUMBER                   = 500000000;
 const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
 const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
-const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 0xfb; // addresses start with "i"
-const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 60;
+const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 0xc2; // addresses start with "Zveta"
+const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 10;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 60 * 60 * 2;
-
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 
 // MONEY_SUPPLY - total number coins to be generated
-const uint64_t MONEY_SUPPLY									 = UINT64_C(99948151623421337);
-const uint64_t FINAL_SUBSIDY_PER_MINUTE						 = UINT64_C(2900000000);
-const unsigned EMISSION_SPEED_FACTOR                         = 19;
+const uint64_t MONEY_SUPPLY									 									= UINT64_C(10000000000000000);
+
+// 2 coins per minute after the money supply is maxed out
+// Adds ~1% inflation each year
+// ((24 * 60 * 2 (coin per min) * 365)/ MONEY_SUPPLY) * 100
+const uint64_t FINAL_SUBSIDY_PER_MINUTE						 						= UINT64_C(200000000);
+const unsigned EMISSION_SPEED_FACTOR                         	= 21;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
 const size_t   CRYPTONOTE_REWARD_BLOCKS_WINDOW               = 100;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE     = 1000000; //size of block (bytes) after which reward for block calculated using block size
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2  = 1000000;
-const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1  = 20000;
+const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1  = 1000000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
 const size_t   CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE        = 600;
 const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 8;
-const uint64_t MINIMUM_FEE                                   = UINT64_C(100000);    // pow(10, 5)
-const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(100000);    // pow(10, 5)
 
-const uint64_t DIFFICULTY_TARGET                             = 120; // seconds
+// With DISPLAY_DECIMAL_POINT 8 i.e. 00000000
+// Fees of UINT64_C(10000) = 0.00010000
+const uint64_t MINIMUM_FEE                                   = UINT64_C(10000);    // pow(10, 4)
+const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(10000);    // pow(10, 4)
+
+const uint64_t DIFFICULTY_TARGET                             = 90; // seconds
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;
 const size_t   DIFFICULTY_WINDOW                             = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY; // blocks
 const size_t   DIFFICULTY_CUT                                = 60;  // timestamps to cut after sorting
 const size_t   DIFFICULTY_LAG                                = 15;
 static_assert(2 * DIFFICULTY_CUT <= DIFFICULTY_WINDOW - 2, "Bad DIFFICULTY_WINDOW or DIFFICULTY_CUT");
 
-const size_t  DIFFICULTY_BLOCKS_V2							 = 17;
-const size_t  DIFFICULTY_CUT_V2								 = 6;
-const size_t  DIFFICULTY_WINDOW_V2							 = DIFFICULTY_BLOCKS_V2 + DIFFICULTY_CUT_V2 * 2;
+const size_t  DIFFICULTY_BLOCKS_V2							 							= 17;
+const size_t  DIFFICULTY_CUT_V2								 								= 6;
+const size_t  DIFFICULTY_WINDOW_V2							 							= DIFFICULTY_BLOCKS_V2 + DIFFICULTY_CUT_V2 * 2;
 
-const size_t   MAX_BLOCK_SIZE_INITIAL                        =  20 * 1024;
-const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         = 100 * 1024;
-const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR_V2		 = 35 * 100 * 1024;
-const size_t   MAX_BLOCK_SIZE_ALLOWED_EVERY_N_BLOCK			 = 5;
-const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       = 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
+const size_t   MAX_BLOCK_SIZE_INITIAL                        	= 200 * 1024;
+const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         	= 100 * 1024;
+const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR_V2		 		= 35 * 100 * 1024;
+const size_t   MAX_BLOCK_SIZE_ALLOWED_EVERY_N_BLOCK			 			= 5; // every 5 blocks, 1 big block is allowed
+const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       	= 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
 
 const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS     = 1;
 const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS    = DIFFICULTY_TARGET * CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS;
@@ -74,17 +80,17 @@ const uint64_t CRYPTONOTE_MEMPOOL_TX_LIVETIME                = 60 * 60 * 24;    
 const uint64_t CRYPTONOTE_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME = 60 * 60 * 24 * 7; //seconds, one week
 const uint64_t CRYPTONOTE_NUMBER_OF_PERIODS_TO_FORGET_TX_DELETED_FROM_POOL = 7;  // CRYPTONOTE_NUMBER_OF_PERIODS_TO_FORGET_TX_DELETED_FROM_POOL * CRYPTONOTE_MEMPOOL_TX_LIVETIME = time to forget tx
 
-const size_t   FUSION_TX_MAX_SIZE                            = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT * 15 / 100;
-const size_t   FUSION_TX_MIN_INPUT_COUNT                     = 12;
-const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              = 4;
+const size_t   FUSION_TX_MAX_SIZE                            	= CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT * 15 / 100;
+const size_t   FUSION_TX_MIN_INPUT_COUNT                     	= 12;
+const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              	= 4;
 
-const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                = 5500;
-const uint32_t UPGRADE_HEIGHT_V2                             = 50000;
-const uint32_t UPGRADE_HEIGHT_MAX_BLOCK_SIZE				 = 65000;
-const uint32_t UPGRADE_HEIGHT_V3                             = 76500;
-const unsigned UPGRADE_VOTING_THRESHOLD                      = 90;               // percent
-const uint32_t UPGRADE_VOTING_WINDOW                         = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
-const uint32_t UPGRADE_WINDOW                                = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
+const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                	= 0;
+const uint32_t UPGRADE_HEIGHT_V2                             	= 50;
+const uint32_t UPGRADE_HEIGHT_MAX_BLOCK_SIZE				 					= 65000;
+const uint32_t UPGRADE_HEIGHT_V3                             	= 100;
+const unsigned UPGRADE_VOTING_THRESHOLD                      	= 90;               // percent
+const uint32_t UPGRADE_VOTING_WINDOW                         	= EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
+const uint32_t UPGRADE_WINDOW                                	= EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 static_assert(0 < UPGRADE_VOTING_THRESHOLD && UPGRADE_VOTING_THRESHOLD <= 100, "Bad UPGRADE_VOTING_THRESHOLD");
 static_assert(UPGRADE_VOTING_WINDOW > 1, "Bad UPGRADE_VOTING_WINDOW");
 
@@ -95,7 +101,7 @@ const char     P2P_NET_DATA_FILENAME[]                       = "p2pstate.bin";
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
 } // parameters
 
-const char     CRYPTONOTE_NAME[]                             = "intensecoin";
+const char     CRYPTONOTE_NAME[]                             = "zvetacoin";
 
 const uint8_t  TRANSACTION_VERSION_1                         =  1;
 const uint8_t  TRANSACTION_VERSION_2                         =  2;
@@ -110,13 +116,13 @@ const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  10000;  //by def
 const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  100;    //by default, blocks count in blocks downloading
 const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
-const int      P2P_DEFAULT_PORT                              =  48772;
-const int      RPC_DEFAULT_PORT                              =  48782;
+const int      P2P_DEFAULT_PORT                              =  18190;
+const int      RPC_DEFAULT_PORT                              =  18191;
 
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;
 
-const size_t   P2P_CONNECTION_MAX_WRITE_BUFFER_SIZE          = 32 * 1024 * 1024; // 32 MB
+const size_t   P2P_CONNECTION_MAX_WRITE_BUFFER_SIZE          = 64 * 1024 * 1024; // 32 MB
 const uint32_t P2P_DEFAULT_CONNECTIONS_COUNT                 = 8;
 const size_t   P2P_DEFAULT_WHITELIST_CONNECTIONS_PERCENT     = 70;
 const uint32_t P2P_DEFAULT_HANDSHAKE_INTERVAL                = 60;            // seconds
@@ -126,18 +132,10 @@ const uint32_t P2P_DEFAULT_CONNECTION_TIMEOUT                = 5000;          //
 const uint32_t P2P_DEFAULT_PING_CONNECTION_TIMEOUT           = 2000;          // 2 seconds
 const uint64_t P2P_DEFAULT_INVOKE_TIMEOUT                    = 60 * 2 * 1000; // 2 minutes
 const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          // 5 seconds
-const char     P2P_STAT_TRUSTED_PUB_KEY[] = "b878340c70329702e0ab40a0f3475d9a5edf36db6892d759f7fb9b601a001cb3";
+const char     P2P_STAT_TRUSTED_PUB_KEY[] = "";
 
 const char* const SEED_NODES[] = {
-	"192.124.18.154:48772",
-	"104.200.65.202:48772",
-	"45.32.171.89:48772",
-	"77.95.32.60:48772",
-	"31.22.1.13:48772",  
-	"31.22.1.14:48772",
-	"31.22.3.82:48772",
-	"31.22.3.83:48772",
-	"31.22.3.84:48772",
+	"165.227.118.233:18190",
 };
 
 struct CheckpointData {
@@ -146,19 +144,9 @@ struct CheckpointData {
 };
 
 const CheckpointData CHECKPOINTS[] = {
-	{1000, "95e016693e0422dbfec51e74342bebcad7b7684f04040c559b9284f937ad1d32"},
-	{5000, "1e7f45e303054aee30feb494b0b69a3a030aa41c2ebe2042a517343ac40fa257"},
-	{10000, "9c4b950f0439d9beb1051d6e39374291300d8cc4c3223aa8d432c04e291b591a"},
-	{25000, "965d533cef5baab75424a58748eada049b5af6ec587fab619810fe38f43e6ed6"},
-	{50005, "6e04c50f71c7b079b91247d6cc030b4ee797f81167c134b8cb757d49bdaf101a"},
-	{65000, "9ead404a1e9d69bcc7efb327a842d2d0bab47627ab14e1b967c6c62847dc0cdc"},
-	{68000, "f5850b5048396f2c5737136549dfcc13548cae13024277b65e4f36637af7be7c"},
-	{75000, "9b23a47364194616b0e3c1793869f96798bd841548fd52fedcf7ce84c9576cba"},
-	{76501, "be1ccf38a7a9f5509303f594c65192b4cb611e38507c0aca1810f38e55cfd0a1"},
-	{85000, "13928cb35b841376bd88a5fd3c6a8f4ff540a9a3e54e1dcd0a0856ae7f3591ef"},
-	{95000, "23631f2e67ed1c82cab4ff97e665ec7cd25dd5b6a6f933f49bad030919990602"},
-	{102400, "5b089253e7e77358adb76346b75ce8294afc0487a3ccebdc99ef6e72b98ff8e5"}
+	{350, "e0a1f0d5404d79df2f5bc26d61fe0b15c795d4ffa5e6bf18a069e14edd9a834b"}
 };
+
 }
 
 #define ALLOW_DEBUG_COMMANDS

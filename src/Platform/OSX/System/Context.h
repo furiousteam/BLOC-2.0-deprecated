@@ -29,7 +29,7 @@ typedef struct mcontext mctx;
 typedef struct ucontext uctx;
 
 extern	int		swapcontext(uctx*, const uctx*);
-extern	void		makecontext(uctx*, void(*)(), intptr_t);
+extern	void		makecontext(uctx*, void(*)(void), intptr_t);
 extern	int		getmcontext(mctx*);
 extern	void		setmcontext(const mctx*);
 
@@ -64,7 +64,7 @@ struct mcontext {
   long	mc_rflags;
   long	mc_rsp;
   long	mc_ss;
-  
+
   long	mc_len;			/* sizeof(mcontext_t) */
 #define	_MC_FPFMT_NODEV		0x10000	/* device not present or configured */
 #define	_MC_FPFMT_XMM		0x10002
@@ -91,12 +91,12 @@ struct ucontext {
    */
   sigset_t	uc_sigmask;
   mctx	uc_mcontext;
-  
+
   struct __ucontext *uc_link;
   stack_t		uc_stack;
   int		__spare__[8];
 };
-  
+
 #ifdef __cplusplus
 }
 #endif
