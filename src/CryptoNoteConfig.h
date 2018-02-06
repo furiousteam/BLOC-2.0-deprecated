@@ -16,6 +16,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
+/*
+Coin name: BlockChain-Coin
+Coin Ticker: BKC
+Adresse prefix: Start with letter 'b'
+Total Supply: 50 000 000
+Premine: 10%
+Emission speed factor: 20
+Difficulty target: 120
+
+Fees of UINT64_C(10000) = 0.000100000
+*/
+
+
 #pragma once
 
 #include <cstddef>
@@ -28,19 +41,19 @@ namespace parameters {
 const uint32_t CRYPTONOTE_MAX_BLOCK_NUMBER                   = 500000000;
 const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
 const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
-const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 0xc2; // addresses start with "Zveta"
+const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 0x234b; // addresses start with "b1"
 const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 10;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 60 * 60 * 2;
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 
 // MONEY_SUPPLY - total number coins to be generated
-const uint64_t MONEY_SUPPLY									 									= UINT64_C(10000000000000000);
+const uint64_t MONEY_SUPPLY									 									= UINT64_C(50000000000000000);
 
 // 2 coins per minute after the money supply is maxed out
 // Adds ~1% inflation each year
 // ((24 * 60 * 2 (coin per min) * 365)/ MONEY_SUPPLY) * 100
-const uint64_t FINAL_SUBSIDY_PER_MINUTE						 						= UINT64_C(200000000);
-const unsigned EMISSION_SPEED_FACTOR                         	= 21;
+const uint64_t FINAL_SUBSIDY_PER_MINUTE						 						= UINT64_C(0);
+const unsigned EMISSION_SPEED_FACTOR                         	= 20;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
 const size_t   CRYPTONOTE_REWARD_BLOCKS_WINDOW               = 100;
@@ -49,14 +62,14 @@ const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2  = 1000000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1  = 1000000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
 const size_t   CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE        = 600;
-const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 8;
+const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 9;
 
-// With DISPLAY_DECIMAL_POINT 8 i.e. 00000000
-// Fees of UINT64_C(10000) = 0.00010000
-const uint64_t MINIMUM_FEE                                   = UINT64_C(10000);    // pow(10, 4)
-const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(10000);    // pow(10, 4)
+// With DISPLAY_DECIMAL_POINT 9 i.e. 000000000
+// Fees of UINT64_C(10000) = 0.000100000
+const uint64_t MINIMUM_FEE                                   = UINT64_C(100000);    // pow(10, 5)
+const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(100000);    // pow(10, 5)
 
-const uint64_t DIFFICULTY_TARGET                             = 90; // seconds
+const uint64_t DIFFICULTY_TARGET                             = 120; // seconds
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;
 const size_t   DIFFICULTY_WINDOW                             = EXPECTED_NUMBER_OF_BLOCKS_PER_DAY; // blocks
 const size_t   DIFFICULTY_CUT                                = 60;  // timestamps to cut after sorting
@@ -101,7 +114,7 @@ const char     P2P_NET_DATA_FILENAME[]                       = "p2pstate.bin";
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
 } // parameters
 
-const char     CRYPTONOTE_NAME[]                             = "zvetacoin";
+const char     CRYPTONOTE_NAME[]                             = "blockchaincoin";
 
 const uint8_t  TRANSACTION_VERSION_1                         =  1;
 const uint8_t  TRANSACTION_VERSION_2                         =  2;
@@ -116,8 +129,8 @@ const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  10000;  //by def
 const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  100;    //by default, blocks count in blocks downloading
 const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
-const int      P2P_DEFAULT_PORT                              =  18190;
-const int      RPC_DEFAULT_PORT                              =  18191;
+const int      P2P_DEFAULT_PORT                              =  12190;
+const int      RPC_DEFAULT_PORT                              =  12191;
 
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;
@@ -135,7 +148,8 @@ const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          //
 const char     P2P_STAT_TRUSTED_PUB_KEY[] = "";
 
 const char* const SEED_NODES[] = {
-	"165.227.118.233:18190",
+	"159.89.32.213:12190",
+	"138.68.237.176:12190"
 };
 
 struct CheckpointData {
@@ -144,7 +158,8 @@ struct CheckpointData {
 };
 
 const CheckpointData CHECKPOINTS[] = {
-	{350, "e0a1f0d5404d79df2f5bc26d61fe0b15c795d4ffa5e6bf18a069e14edd9a834b"}
+	// fake checkpoint -- update this 
+	{350000000, "e0a1f0d5404d79df2f5bc26d61fe0b15c795d4ffa5e6bf18a069e14edd9a834b"}
 };
 
 }
