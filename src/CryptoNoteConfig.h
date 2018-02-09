@@ -47,7 +47,7 @@ const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 60 * 60 * 2;
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 
 // MONEY_SUPPLY - total number coins to be generated
-const uint64_t MONEY_SUPPLY									 									= UINT64_C(50000000000000000);
+const uint64_t MONEY_SUPPLY									 									= UINT64_C(5000000000000000);
 
 // 2 coins per minute after the money supply is maxed out
 // Adds ~1% inflation each year
@@ -62,12 +62,12 @@ const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2  = 1000000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1  = 1000000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
 const size_t   CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE        = 600;
-const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 9;
+const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 8;
 
 // With DISPLAY_DECIMAL_POINT 9 i.e. 000000000
 // Fees of UINT64_C(10000) = 0.000100000
-const uint64_t MINIMUM_FEE                                   = UINT64_C(100000);    // pow(10, 5)
-const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(100000);    // pow(10, 5)
+const uint64_t MINIMUM_FEE                                   = UINT64_C(10000);    // pow(10, 5)
+const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(10000);    // pow(10, 5)
 
 const uint64_t DIFFICULTY_TARGET                             = 120; // seconds
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;
@@ -129,8 +129,8 @@ const size_t   BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT        =  10000;  //by def
 const size_t   BLOCKS_SYNCHRONIZING_DEFAULT_COUNT            =  100;    //by default, blocks count in blocks downloading
 const size_t   COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT         =  1000;
 
-const int      P2P_DEFAULT_PORT                              =  12190;
-const int      RPC_DEFAULT_PORT                              =  12191;
+const int      P2P_DEFAULT_PORT                              =  2082;
+const int      RPC_DEFAULT_PORT                              =  2086;
 
 const size_t   P2P_LOCAL_WHITE_PEERLIST_LIMIT                =  1000;
 const size_t   P2P_LOCAL_GRAY_PEERLIST_LIMIT                 =  5000;
@@ -148,8 +148,10 @@ const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          //
 const char     P2P_STAT_TRUSTED_PUB_KEY[] = "";
 
 const char* const SEED_NODES[] = {
-	"159.89.32.213:12190",
-	"138.68.237.176:12190"
+	"usa.blockchain-coin.net:2082",
+	"usa2.blockchain-coin.net:2082"
+	"europe1-blockchain-coin.net:2082"
+	"europe2-blockchain-coin.net:2082"
 };
 
 struct CheckpointData {
