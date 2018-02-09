@@ -149,8 +149,8 @@ const char     P2P_STAT_TRUSTED_PUB_KEY[] = "";
 
 const char* const SEED_NODES[] = {
 	"usa.blockchain-coin.net:2082",
-	"usa2.blockchain-coin.net:2082"
-	"europe1-blockchain-coin.net:2082"
+	"usa2.blockchain-coin.net:2082",
+	"europe1-blockchain-coin.net:2082",
 	"europe2-blockchain-coin.net:2082"
 };
 
