@@ -2,6 +2,7 @@
 build
 .vs
 CMakeFiles
+CMakeCache.txt
 *.dir
 *.vcxproj
 *.filters
