@@ -2,6 +2,10 @@ Intense Coin is a cryptocurrency focused on providing a decentralized mechanism 
 
 ## Building BlockChain Coin
 
+```
+git clone https://github.com/furiousteam/blockchain-coin.git
+```
+
 ### On macOS
 
 Dependencies: GCC 4.7.3 or later, CMake 2.8.6 or later, and Boost 1.55.
@@ -30,23 +34,35 @@ sudo apt-get -y install libgtest-dev git
 
 * Parallel build: run `make -j<number of threads>` instead of `make`.
 * Debug build: run `make build-debug`.
-* Test suite: run `make test-release` to run tests in addition to building. Running `make test-debug` will do the same to the debug version.
+* Test suite: run `make test-release` to run tests in addition to building. 
+* Running `make test-debug` will do the same to the debug version.
 * Building with Clang: it may be possible to use Clang instead of GCC, but this may not work everywhere. To build, run `export CC=clang CXX=clang++` before running `make`.
 
 
 ### On Windows
 Dependencies: MSVC 2013 or later, CMake 2.8.6 or later, and Boost 1.55. You may download them from:
 
-* http://www.microsoft.com/
-* http://www.cmake.org/
-* http://www.boost.org/
+* VISUAL STUDIO 2015
+* BOOST for Visual Studio: https://dl.bintray.com/boostorg/release/1.64.0/binaries/boost_1_64_0-msvc-14.1-64.exe
+* QT for Visual Studio:http://download.qt.io/official_releases/qt/5.10/5.10.0/qt-opensource-windows-x86-5.10.0.exe
+* MSBuild https://www.microsoft.com/en-us/download/details.aspx?id=48159
+* CMake https://cmake.org/install/
 
 To build, change to a directory where this file is located, and run these commands: 
 ```
 mkdir build
 cd build
-cmake -G "Visual Studio 12 Win64" ..
+cmake -DSTATIC=1 -Wno-dev ^
+-DCMAKE_PREFIX_PATH="C:\Qt\Qt5.10.0\5.10.0\msvc2015_64" ^
+-DBOOST_ROOT="C:\local\boost_1_64_0_64" ^
+-DBOOST_INCLUDEDIR="C:\local\boost_1_64_0_64\lib64-msvc-14.1" ^
+-DBOOST_LIBRARYDIR="C:\local\boost_1_64_0_64\libs" ^
+-G "Visual Studio 15 Win64" ..
+
+
+# Open Solution file in Build folder and Build Release.
 ```
+
 
 If you are building on an older processor without AVX support, add the following options to cmake:
 
