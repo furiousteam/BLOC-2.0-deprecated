@@ -2,11 +2,9 @@ Intense Coin is a cryptocurrency focused on providing a decentralized mechanism 
 
 ## Building BlockChain Coin
 
-### On *nix
+### On macOS
 
 Dependencies: GCC 4.7.3 or later, CMake 2.8.6 or later, and Boost 1.55.
-
-You may download them from:
 
 ```
 # install & update xcode
@@ -16,6 +14,17 @@ brew install cmake
 brew install boost
 ```
 To build, change to a directory where this file is located, and run `make`. The resulting executables can be found in `build/release/src`.
+
+### On Ubuntu 16.04
+
+```
+apt-get update
+apt-get install sudo
+sudo apt-get -y install build-essential cmake libboost-all-dev  vim git pkg-config
+sudo apt-get -y install libssl-dev libzmq3-dev libunbound-dev libsodium-dev libminiupnpc-dev libunwind8-dev
+sudo apt-get -y install liblzma-dev libreadline6-dev libldns-dev libexpat1-dev doxygen graphviz
+sudo apt-get -y install libgtest-dev git
+```
 
 **Advanced options:**
 
