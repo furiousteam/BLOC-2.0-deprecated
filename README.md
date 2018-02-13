@@ -8,13 +8,13 @@ Dependencies: GCC 4.7.3 or later, CMake 2.8.6 or later, and Boost 1.55.
 
 You may download them from:
 
-``
+```
 # install & update xcode
 xcode-select --install
 # install brew
 brew install cmake
 brew install boost
-``
+```
 To build, change to a directory where this file is located, and run `make`. The resulting executables can be found in `build/release/src`.
 
 **Advanced options:**
