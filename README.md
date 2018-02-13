@@ -17,7 +17,6 @@ xcode-select --install
 brew install cmake
 brew install boost
 ```
-To build, change to a directory where this file is located, and run `make`. The resulting executables can be found in `build/release/src`.
 
 ### On Ubuntu 16.04
 
