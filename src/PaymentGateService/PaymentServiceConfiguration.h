@@ -38,6 +38,7 @@ struct Configuration {
 
   std::string bindAddress;
   uint16_t bindPort;
+  std::string rpcPassword;
 
   std::string containerFile;
   std::string containerPassword;
@@ -50,6 +51,7 @@ struct Configuration {
   bool unregisterService;
   bool testnet;
   bool printAddresses;
+  bool legacySecurity;
 
   size_t logLevel;
 };
