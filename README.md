@@ -80,6 +80,13 @@ Curl
 ```
 curl -X POST http://yourip:rpcport/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"getbalance","params":"","password":"rpc-password"}' -H 'Content-Type: application/json'
 ```
+```
+Simplewallet JSON RPC API:
+https://wiki.bytecoin.org/wiki/Simplewallet_JSON_RPC_API
+
+Simplewallet command line arguments and commands:
+https://wiki.bytecoin.org/wiki/Simplewallet_command_line_arguments_and_commands
+```
 
 Walletd:
 ```
@@ -104,6 +111,23 @@ Curl
 ```
 curl -X POST http://yourip:rpcport/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"getBalance","password":"rpcpassword"}' -H 'Content-Type: application/json'
 ```
+```
+Bytecoin RPC Wallet JSON RPC API:
+https://wiki.bytecoin.org/wiki/Bytecoin_RPC_Wallet_JSON_RPC_API
 
+Bytecoin RPC Wallet:
+https://wiki.bytecoin.org/wiki/Bytecoin_RPC_Wallet
+```
 
+### BLOCKCHAIN-COIN API REFERENCES
 
+```
+Daemon command line arguments and commands:
+https://wiki.bytecoin.org/wiki/Daemon_command_line_arguments_and_commands
+
+Daemon HTTP RPC API:
+https://wiki.bytecoin.org/wiki/Daemon_HTTP_RPC_API
+
+Daemon JSON RPC API:
+https://wiki.bytecoin.org/wiki/Daemon_JSON_RPC_API
+```
