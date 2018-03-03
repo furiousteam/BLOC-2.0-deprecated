@@ -85,16 +85,16 @@ Walletd:
 ```
 1. Copy config file near binaries
 
-	container-file = yourfile
-	container-password = password
-	daemon-port = 2086
-	bind-port = 2053
-	testnet = no
-	bind-address = 0.0.0.0
-	password = rpcpassword
+container-file = yourfile
+container-password = password
+daemon-port = 2086
+bind-port = 2053
+testnet = no
+bind-address = 0.0.0.0
+password = rpcpassword
 	
 2. Generate container
-	./walletd --container-file=blocgateway --container-password=bJRUVGypnFKKY7FP3PeD23oVaP --generate-container
+./walletd --container-file=blocgateway --container-password=bJRUVGypnFKKY7FP3PeD23oVaP --generate-container
 	
 3. Start walletd
 ./walletd --config=yourfile.conf --rpc-password yourrpcpassword
