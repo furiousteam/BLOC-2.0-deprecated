@@ -1,5 +1,3 @@
-Intense Coin is a cryptocurrency focused on providing a decentralized mechanism of exchange, and anonymity via untraceable and unlinkable transactions.
-
 ## Building BlockChain Coin
 
 ```
@@ -68,4 +66,16 @@ If you are building on an older processor without AVX support, add the following
 ```
 -DPORTABLE=1 -DWITH_AVX2=0
 ```
+
+
+### BLOCKCHAIN-COIN JSON RPC API
+
+New Simplewallet and Walletd JSON RPC API commands with password:
+
+```
+./simplewallet --wallet-file filename --password yourpassword --rpc-bind-ip=0.0.0.0 --rpc-bind-port 2053 --rpc-password rpcpassword
+./walletd --config=yourfile.conf --rpc-password yourrpcpassword
+
+```
+
 
