@@ -94,7 +94,7 @@ bind-address = 0.0.0.0
 password = rpcpassword
 	
 2. Generate container
-./walletd --container-file=blocgateway --container-password=bJRUVGypnFKKY7FP3PeD23oVaP --generate-container
+./walletd --container-file=blocgateway --container-password=password --generate-container
 	
 3. Start walletd
 ./walletd --config=yourfile.conf --rpc-password yourrpcpassword
