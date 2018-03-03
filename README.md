@@ -70,12 +70,40 @@ If you are building on an older processor without AVX support, add the following
 
 ### BLOCKCHAIN-COIN JSON RPC API
 
-New Simplewallet and Walletd JSON RPC API commands with password:
+Start simple wallet with password protected wallet:
 
 ```
 ./simplewallet --wallet-file filename --password yourpassword --rpc-bind-ip=0.0.0.0 --rpc-bind-port 2053 --rpc-password rpcpassword
+```
+
+Curl 
+```
+curl -X POST http://yourip:rpcport/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"getbalance","params":"","password":"rpc-password"}' -H 'Content-Type: application/json'
+```
+
+Walletd:
+```
+1. Copy config file near binaries
+
+	container-file = yourfile
+	container-password = password
+	daemon-port = 2086
+	bind-port = 2053
+	testnet = no
+	bind-address = 0.0.0.0
+	password = rpcpassword
+	
+2. Generate container
+	./walletd --container-file=blocgateway --container-password=bJRUVGypnFKKY7FP3PeD23oVaP --generate-container
+	
+3. Start walletd
 ./walletd --config=yourfile.conf --rpc-password yourrpcpassword
 
 ```
+Curl 
+```
+curl -X POST http://yourip:rpcport/json_rpc -d '{"jsonrpc":"2.0","id":"0","method":"getBalance","password":"rpcpassword"}' -H 'Content-Type: application/json'
+```
+
 
 
