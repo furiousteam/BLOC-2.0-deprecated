@@ -587,7 +587,6 @@ bool CryptoNoteProtocolHandler::on_connection_synchronized() {
 	  << "If you do not exit properly, you may lose your blockchain and wallet data." << ENDL
       << ENDL
       << "Use \"help\" command to see the list of available commands." << ENDL
-	  << "Use \"export_keys\" command to display your keys for restoring a corrupted wallet."<< ENDL
       << "**********************************************************************";
 
     m_observerManager.notify(&ICryptoNoteProtocolObserver::blockchainSynchronized, m_core.getTopBlockIndex());
