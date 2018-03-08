@@ -1116,7 +1116,8 @@ std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, cons
   if (insertIt != index.end()) {
     m_logger(ERROR, BRIGHT_RED) << "Failed to add wallet: address already exists, " <<
       m_currency.accountAddressAsString(AccountPublicAddress{spendPublicKey, m_viewPublicKey});
-    throw std::system_error(make_error_code(error::ADDRESS_ALREADY_EXISTS));
+        auto address = m_currency.accountAddressAsString({ spendPublicKey, m_viewPublicKey });
+    return address;
   }
 
   m_containerStorage.push_back(encryptKeyPair(spendPublicKey, spendSecretKey, creationTimestamp));
