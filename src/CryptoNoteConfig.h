@@ -18,14 +18,14 @@
 
 /*
 Coin name: BlockChain-Coin
-Coin Ticker: BKC
-Adresse prefix: Start with letter 'b'
+Coin Ticker: BLOC
+Adresse prefix: Start with letter 'abloc'
 Total Supply: 50 000 000
 Premine: 10%
-Emission speed factor: 20
+Emission speed factor: 21
 Difficulty target: 120
 
-Fees of UINT64_C(10000) = 0.000100000
+Fees of UINT64_C(1) = 0.0001
 */
 
 
@@ -42,18 +42,14 @@ const uint32_t CRYPTONOTE_MAX_BLOCK_NUMBER                   = 500000000;
 const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
 const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
 const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 0xee06ac8; // addresses start with "abLoc"
-const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 10;
+const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 50;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 60 * 60 * 2;
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 
 // MONEY_SUPPLY - total number coins to be generated
-const uint64_t MONEY_SUPPLY					= UINT64_C(5000000000000000);
-
-// 2 coins per minute after the money supply is maxed out
-// Adds ~1% inflation each year
-// ((24 * 60 * 2 (coin per min) * 365)/ MONEY_SUPPLY) * 100
-const uint64_t FINAL_SUBSIDY_PER_MINUTE				= UINT64_C(0);
-const unsigned EMISSION_SPEED_FACTOR                         	= 20;
+const uint64_t MONEY_SUPPLY									= UINT64_C(500000000000);
+const uint64_t FINAL_SUBSIDY_PER_MINUTE						= UINT64_C(0);
+const unsigned EMISSION_SPEED_FACTOR                        = 21;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
 const size_t   CRYPTONOTE_REWARD_BLOCKS_WINDOW               = 100;
@@ -62,12 +58,12 @@ const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2  = 1000000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1  = 1000000;
 const size_t   CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT = CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
 const size_t   CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE        = 600;
-const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 8;
+const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 4;
 
-// With DISPLAY_DECIMAL_POINT 9 i.e. 000000000
-// Fees of UINT64_C(10000) = 0.000100000
-const uint64_t MINIMUM_FEE                                   = UINT64_C(10000);    // pow(10, 5)
-const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(10000);    // pow(10, 5)
+// With DISPLAY_DECIMAL_POINT 4 i.e. 00000
+// Fees of UINT64_C(1) = 0.0001
+const uint64_t MINIMUM_FEE                                   = UINT64_C(1);    // pow(10, 5)
+const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(1);    // pow(10, 5)
 
 const uint64_t DIFFICULTY_TARGET                             = 120; // seconds
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;
@@ -82,25 +78,24 @@ const size_t  DIFFICULTY_WINDOW_V2				= DIFFICULTY_BLOCKS_V2 + DIFFICULTY_CUT_V2
 
 const size_t   MAX_BLOCK_SIZE_INITIAL                        	= 20 * 1024;
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR         	= 100 * 1024;
-const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR_V2		= 100 * 1024;
-//const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR_V2		= 35 * 100 * 1024;
-const size_t   MAX_BLOCK_SIZE_ALLOWED_EVERY_N_BLOCK		= 5; // every 5 blocks, 1 big block is allowed
+const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR_V2			= 35 * 100 * 1024;
+const size_t   MAX_BLOCK_SIZE_ALLOWED_EVERY_N_BLOCK				= 10; // every 10 blocks, 1 big block is allowed
 const uint64_t MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR       	= 365 * 24 * 60 * 60 / DIFFICULTY_TARGET;
 
-const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS     = 1;
-const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS    = DIFFICULTY_TARGET * CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS;
+const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS    	= 1;
+const uint64_t CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS    	= DIFFICULTY_TARGET * CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS;
 
-const uint64_t CRYPTONOTE_MEMPOOL_TX_LIVETIME                = 60 * 60 * 24;     //seconds, one day
-const uint64_t CRYPTONOTE_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME = 60 * 60 * 24 * 7; //seconds, one week
+const uint64_t CRYPTONOTE_MEMPOOL_TX_LIVETIME                	= 60 * 60 * 24;     //seconds, one day
+const uint64_t CRYPTONOTE_MEMPOOL_TX_FROM_ALT_BLOCK_LIVETIME 	= 60 * 60 * 24 * 7; //seconds, one week
 const uint64_t CRYPTONOTE_NUMBER_OF_PERIODS_TO_FORGET_TX_DELETED_FROM_POOL = 7;  // CRYPTONOTE_NUMBER_OF_PERIODS_TO_FORGET_TX_DELETED_FROM_POOL * CRYPTONOTE_MEMPOOL_TX_LIVETIME = time to forget tx
 
-const size_t   FUSION_TX_MAX_SIZE                            	= CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT * 15 / 100;
+const size_t   FUSION_TX_MAX_SIZE                            	= CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT * 30 / 100;
 const size_t   FUSION_TX_MIN_INPUT_COUNT                     	= 12;
 const size_t   FUSION_TX_MIN_IN_OUT_COUNT_RATIO              	= 4;
 
 const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                	= 0;
 const uint32_t UPGRADE_HEIGHT_V2                             	= 50;
-const uint32_t UPGRADE_HEIGHT_MAX_BLOCK_SIZE			= 65000;
+const uint32_t UPGRADE_HEIGHT_MAX_BLOCK_SIZE					= 65000;
 const uint32_t UPGRADE_HEIGHT_V3                             	= 100;
 const unsigned UPGRADE_VOTING_THRESHOLD                      	= 90;               // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         	= EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -149,10 +144,8 @@ const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          //
 const char     P2P_STAT_TRUSTED_PUB_KEY[] = "";
 
 const char* const SEED_NODES[] = {
-	"atlantic.blockchain-coin.net:2082",
-	"pacific.blockchain-coin.net:2082",
-	"baltic.blockchain-coin.net:2082",
-	"europe-central.blockchain-coin.net:2082"
+	"159.65.76.99:2082",
+	"167.99.156.111:2082"
 };
 
 struct CheckpointData {
@@ -160,10 +153,7 @@ struct CheckpointData {
   const char* blockId;
 };
 
-const CheckpointData CHECKPOINTS[] = {
-	// fake checkpoint -- update this 
-	{350000000, "e0a1f0d5404d79df2f5bc26d61fe0b15c795d4ffa5e6bf18a069e14edd9a834b"}
-};
+const CheckpointData CHECKPOINTS[] = { };
 
 }
 
