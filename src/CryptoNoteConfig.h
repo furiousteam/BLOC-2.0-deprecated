@@ -1,23 +1,24 @@
+// Copyright (c) 2018, BLOC developers
 // Copyright (c) 2017-2018, Intense Coin developers
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 //
-// This file is part of Bytecoin.
+// This file is part of Blockchain-Coin BLOC.
 //
-// Bytecoin is free software: you can redistribute it and/or modify
+// Blockchain-Coin is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Bytecoin is distributed in the hope that it will be useful,
+// Blockchain-Coin is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
+// along with Blockchain-Coin.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
-Coin name: BlockChain-Coin
+Coin name: Blockchain-Coin
 Coin Ticker: BLOC
 Adresse prefix: Start with letter 'abloc'
 Total Supply: 50 000 000
@@ -47,9 +48,9 @@ const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 60 * 60 * 2;
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 
 // MONEY_SUPPLY - total number coins to be generated
-const uint64_t MONEY_SUPPLY									= UINT64_C(500000000000);
-const uint64_t FINAL_SUBSIDY_PER_MINUTE						= UINT64_C(0);
-const unsigned EMISSION_SPEED_FACTOR                        = 21;
+const uint64_t MONEY_SUPPLY				     = UINT64_C(500000000000);
+const uint64_t FINAL_SUBSIDY_PER_MINUTE			     = UINT64_C(0);
+const unsigned EMISSION_SPEED_FACTOR                         = 21;
 static_assert(EMISSION_SPEED_FACTOR <= 8 * sizeof(uint64_t), "Bad EMISSION_SPEED_FACTOR");
 
 const size_t   CRYPTONOTE_REWARD_BLOCKS_WINDOW               = 100;
