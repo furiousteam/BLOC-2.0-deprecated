@@ -558,5 +558,4 @@ void cn_slow_hash<MEMORY,ITER,VERSION>::software_hash(const void* in, size_t len
 	}
 }
 
-template class cn_slow_hash<2*1024*1024, 0x80000, 0>;
 template class cn_slow_hash<4*1024*1024, 0x40000, 1>;
