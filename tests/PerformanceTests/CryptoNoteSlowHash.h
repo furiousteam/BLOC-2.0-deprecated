@@ -48,12 +48,12 @@ public:
 
   bool test() {
     Crypto::Hash hash;
-    Crypto::cn_slow_hash(m_context, &m_data, sizeof(m_data), hash);
+    m_context.hash(&m_data, sizeof(m_data), hash);
     return hash == m_expected_hash;
   }
 
 private:
   data_t m_data;
   Crypto::Hash m_expected_hash;
-  Crypto::cn_context m_context;
+  Crypto::cn_pow_hash m_context;
 };

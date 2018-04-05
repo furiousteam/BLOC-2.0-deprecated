@@ -57,6 +57,8 @@
 #define HAS_INTEL_HW
 #endif
 
+namespace Crypto {
+
 #ifdef HAS_INTEL_HW
 inline void cpuid(uint32_t eax, int32_t ecx, int32_t val[4])
 {
@@ -251,4 +253,6 @@ private:
 };
 
 extern template class cn_slow_hash<4*1024*1024, 0x40000, 1>;
+
+} //namespace Crypto
 

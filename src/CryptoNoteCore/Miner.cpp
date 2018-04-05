@@ -278,7 +278,7 @@ namespace CryptoNote
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::find_nonce_for_given_block(Crypto::cn_context &context, BlockTemplate& bl, const Difficulty& diffic) {
+  bool miner::find_nonce_for_given_block(Crypto::cn_pow_hash &context, BlockTemplate& bl, const Difficulty& diffic) {
 
     unsigned nthreads = std::thread::hardware_concurrency();
 
@@ -290,7 +290,7 @@ namespace CryptoNote
 
       for (unsigned i = 0; i < nthreads; ++i) {
         threads[i] = std::async(std::launch::async, [&, i]() {
-          Crypto::cn_context localctx;
+          Crypto::cn_pow_hash localctx;
           Crypto::Hash h;
 
           BlockTemplate lb(bl); // copy to local block
@@ -376,7 +376,7 @@ namespace CryptoNote
     uint32_t nonce = m_starter_nonce + th_local_index;
     Difficulty local_diff = 0;
     uint32_t local_template_ver = 0;
-    Crypto::cn_context context;
+    Crypto::cn_pow_hash context;
     BlockTemplate b;
 
     while(!m_stop)

@@ -27,7 +27,7 @@
 using namespace std;
 typedef Crypto::Hash chash;
 
-Crypto::cn_context *context;
+Crypto::cn_pow_hash *context;
 
 extern "C" {
 #ifdef _MSC_VER
@@ -42,7 +42,7 @@ extern "C" {
   }
 
   static void slow_hash(const void *data, size_t length, char *hash) {
-    cn_slow_hash(*context, data, length, *reinterpret_cast<chash *>(hash));
+    context->hash(data, length, hash);
   }
 }
 
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     }
   }
   if (f == slow_hash) {
-    context = new Crypto::cn_context();
+    context = new Crypto::cn_pow_hash();
   }
   input.open(argv[2], ios_base::in);
   for (;;) {

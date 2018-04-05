@@ -30,13 +30,18 @@
 // Parts of this file are originally copyright (c) 2012-2013, The Cryptonote developers
 
 #include "cn_slow_hash.hpp"
+
+extern "C" {
 #include "keccak.h"
+}
 
 #ifdef HAS_INTEL_HW
 
 #if !defined(_LP64) && !defined(_WIN64)
 #define BUILD32
 #endif
+
+namespace Crypto {
 
 // sl_xor(a1 a2 a3 a4) = a1 (a2^a1) (a3^a2^a1) (a4^a3^a2^a1)
 inline __m128i sl_xor(__m128i tmp1)
@@ -394,5 +399,7 @@ void cn_slow_hash<MEMORY,ITER,VERSION>::hardware_hash(const void* in, size_t len
 }
 
 template class cn_slow_hash<4*1024*1024, 0x40000, 1>;
+
+}
 
 #endif

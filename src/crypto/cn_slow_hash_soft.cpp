@@ -29,7 +29,12 @@
 // Parts of this file are originally copyright (c) 2012-2013, The Cryptonote developers
 
 #include "cn_slow_hash.hpp"
+
+extern "C" {
 #include "keccak.h"
+}
+
+namespace Crypto {
 
 /*
 AES Tables Implementation is
@@ -559,3 +564,6 @@ void cn_slow_hash<MEMORY,ITER,VERSION>::software_hash(const void* in, size_t len
 }
 
 template class cn_slow_hash<4*1024*1024, 0x40000, 1>;
+
+}
+
