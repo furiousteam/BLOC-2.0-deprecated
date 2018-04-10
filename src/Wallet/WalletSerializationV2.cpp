@@ -196,7 +196,7 @@ std::unordered_set<Crypto::PublicKey>& WalletSerializerV2::deletedKeys() {
 }
 
 void WalletSerializerV2::loadKeyListAndBanalces(CryptoNote::ISerializer& serializer, bool saveCache) {
-  size_t walletCount;
+  uint64_t walletCount;
   serializer(walletCount, "walletCount");
 
   m_actualBalance = 0;
