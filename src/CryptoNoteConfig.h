@@ -145,8 +145,11 @@ const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          //
 const char     P2P_STAT_TRUSTED_PUB_KEY[] = "";
 
 const char* const SEED_NODES[] = {
-	"167.99.145.155:2082",
-	"167.99.174.13:2082"
+	"http://atlantic.blockchain-coin.net:2082",
+	"http://pacific.blockchain-coin.net:2082",
+	"http://baltic.blockchain-coin.net:2082",
+	"http://europe-central.blockchain-coin.net:2082"
+		
 };
 
 struct CheckpointData {
