@@ -2,23 +2,23 @@
 // Copyright (c) 2017-2018, Intense Coin developers
 // Copyright (c) 2012-2017, The CryptoNote developers, The Bytecoin developers
 //
-// This file is part of Blockchain-Coin BLOC.
+// This file is part of BLOC.
 //
-// Blockchain-Coin is free software: you can redistribute it and/or modify
+// BLOC is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// Blockchain-Coin is distributed in the hope that it will be useful,
+// BLOC is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with Blockchain-Coin.  If not, see <http://www.gnu.org/licenses/>.
+// along with BLOC.  If not, see <http://www.gnu.org/licenses/>.
 
 /*
-Coin name: Blockchain-Coin
+Coin name: BLOC
 Coin Ticker: BLOC
 Adresse prefix: Start with letter 'abloc'
 Total Supply: 50 000 000
@@ -111,7 +111,7 @@ const char     P2P_NET_DATA_FILENAME[]                       = "p2pstate.bin";
 const char     MINER_CONFIG_FILE_NAME[]                      = "miner_conf.json";
 } // parameters
 
-const char     CRYPTONOTE_NAME[]                             = "blockchaincoin";
+const char     CRYPTONOTE_NAME[]                             = "BLOC";
 
 const uint8_t  TRANSACTION_VERSION_1                         =  1;
 const uint8_t  TRANSACTION_VERSION_2                         =  2;
@@ -145,10 +145,11 @@ const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          //
 const char     P2P_STAT_TRUSTED_PUB_KEY[] = "";
 
 const char* const SEED_NODES[] = {
-	"atlantic.blockchain-coin.net:2082",
-	"pacific.blockchain-coin.net:2082",
-	"baltic.blockchain-coin.net:2082",
-	"europe-central.blockchain-coin.net:2082"
+	"atlantic.bloc.money:2082",
+	"pacific.bloc.money:2082",
+	"baltic.bloc.money:2082",
+	"europe.bloc.money:2082",
+	"asia.bloc.money:2082"
 		
 };
 
