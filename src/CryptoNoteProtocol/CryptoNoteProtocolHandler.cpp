@@ -572,7 +572,7 @@ bool CryptoNoteProtocolHandler::request_missing_objects(CryptoNoteConnectionCont
     requestMissingPoolTransactions(context);
 
     context.m_state = CryptoNoteConnectionContext::state_normal;
-    logger(Logging::INFO, Logging::BRIGHT_GREEN) << context << "SUCCESSFULLY SYNCHRONIZED WITH THE BLOCKCHAIN-COIN NETWORK.";
+    logger(Logging::INFO, Logging::BRIGHT_GREEN) << context << "SUCCESSFULLY SYNCHRONIZED WITH THE BLOC.MONEY NETWORK.";
     on_connection_synchronized();
   }
   return true;
