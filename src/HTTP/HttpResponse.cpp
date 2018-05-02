@@ -55,7 +55,7 @@ namespace CryptoNote {
 
 HttpResponse::HttpResponse() {
   status = STATUS_200;
-  headers["Server"] = "Blockchain-Coin HTTP server";
+  headers["Server"] = "BLOC.MONEY HTTP server";
   headers["Access-Control-Allow-Origin"] = "*";
 }
 
