@@ -99,7 +99,7 @@ bool Currency::generateGenesisBlock() {
 
 
   // Hard code coinbase tx in genesis block, because through generating tx use random, but genesis should be always the same
-  std::string genesisCoinbaseTxHex = "010a01ff000180e8eda1ba0102f30e6f507d28f32e3c59670efa08b16b25e8b1fb55b40c617f14a00a16970ade2101b3ca76529506fca6c79f59c7717bb2085ca17e8b9b4455efee7946788aa91930";
+  std::string genesisCoinbaseTxHex = "010a01ff000180e8eda1ba0102d0c75826c2f5c0e2e3eb082c66b0225fbef62f4df14bcf42150e7617b0291749210142a0214c40b4161a575ed4427aa009e29a907647af2699b7505fb3c7986d9d81";
   BinaryArray minerTxBlob;
 
   bool r =
@@ -169,7 +169,7 @@ bool Currency::getBlockReward(uint8_t blockMajorVersion, size_t medianSize, size
   uint64_t baseReward = (m_moneySupply - alreadyGeneratedCoins) >> m_emissionSpeedFactor;
 
   //infinite minimal block rewards after block reward falls under m_finalSubsidy per minute
-  /* // no final subsidy for BlockChain-Coin
+  /* // no final subsidy for BLOC
   uint64_t subsidyTarget = m_difficultyTarget / 60 * m_finalSubsidy;
   if (baseReward < subsidyTarget) {
 	  baseReward = subsidyTarget;
