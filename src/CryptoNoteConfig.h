@@ -158,7 +158,10 @@ struct CheckpointData {
   const char* blockId;
 };
 
-const CheckpointData CHECKPOINTS[] = { };
+const CheckpointData CHECKPOINTS[] = {
+	{300, "a20d4c204aa5c01055f80504e8f802c59e8d3e7f8d058884bf8eee18d9b136e8"},
+	{800, "2140edb727df761f6e2a0f1a07a86e6f9c9997c2a2a6ee59d94bdc785c4d76ea"},
+	{1300, "6e2b2a587fb16b0fe6c7c03de69f9060137ad218a941204ad19b832fce8c008f"}};
 
 }
 
