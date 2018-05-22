@@ -20,7 +20,6 @@
   <a href="#how-to-use">How To Use</a> •
   <a href="#download">Download</a> •
   <a href="#api-references">API References</a> •
-  <a href="#credits">Credits</a> •
   <a href="#related">Related</a> •
   <a href="#license">License</a>
 </p>
@@ -158,9 +157,7 @@ Commands:
 
 The complete API reference is available here:
 
-* [Daemon command line arguments and commands](https://wiki.bytecoin.org/wiki/Daemon_command_line_arguments_and_commands)
-* [Daemon HTTP RPC API](https://wiki.bytecoin.org/wiki/Daemon_HTTP_RPC_API)
-* [Daemon JSON RPC API](https://wiki.bytecoin.org/wiki/Daemon_JSON_RPC_API)
+* [Daemon JSON API](https://bloc-developer.com/api_blockchaincoind)
 
 ## simplewallet
 
@@ -221,8 +218,7 @@ You can also specify various settings for the RPC interface:
 
 The complete API reference is available here:
 
-* [Simplewallet JSON RPC API](https://wiki.bytecoin.org/wiki/Simplewallet_JSON_RPC_API)
-* [Simplewallet command line arguments and commands](https://wiki.bytecoin.org/wiki/Simplewallet_command_line_arguments_and_commands)
+* [Simplewallet JSON RPC API](https://bloc-developer.com/api_simplewallet)
 
 ## walletd
 
@@ -254,8 +250,7 @@ Start walletd:
 
 The complete API reference is available here:
 
-* [Bytecoin RPC Wallet JSON RPC API](https://wiki.bytecoin.org/wiki/Bytecoin_RPC_Wallet_JSON_RPC_API)
-* [Bytecoin RPC Wallet](https://wiki.bytecoin.org/wiki/Bytecoin_RPC_Wallet)
+* [walletd RPC Wallet JSON RPC API](https://bloc-developer.com/api_walletd)
 
 ## Download
 
@@ -263,23 +258,9 @@ You can [download](https://bloc.money/download) latest stable version of the BLO
 
 ## API References
 
-* [Simplewallet JSON RPC API](https://wiki.bytecoin.org/wiki/Simplewallet_JSON_RPC_API)
-* [Simplewallet command line arguments and commands](https://wiki.bytecoin.org/wiki/Simplewallet_command_line_arguments_and_commands)
-* [Bytecoin RPC Wallet JSON RPC API](https://wiki.bytecoin.org/wiki/Bytecoin_RPC_Wallet_JSON_RPC_API)
-* [Bytecoin RPC Wallet](https://wiki.bytecoin.org/wiki/Bytecoin_RPC_Wallet)
-* [Daemon command line arguments and commands](https://wiki.bytecoin.org/wiki/Daemon_command_line_arguments_and_commands)
-* [Daemon HTTP RPC API](https://wiki.bytecoin.org/wiki/Daemon_HTTP_RPC_API)
-* [Daemon JSON RPC API](https://wiki.bytecoin.org/wiki/Daemon_JSON_RPC_API)
-
-## Credits
-
-This software uses code from several open source packages.
-
-* [Add project](https://todo.com)
-* [Add project](https://todo.com)
-* [Add project](https://todo.com)
-* [Add project](https://todo.com)
-* [Add project](https://todo.com)
+* [Daemon JSON API](https://bloc-developer.com/api_blockchaincoind)
+* [Simplewallet JSON RPC API](https://bloc-developer.com/api_simplewallet)
+* [walletd RPC Wallet JSON RPC API](https://bloc-developer.com/api_walletd)
 
 ## Related
 
