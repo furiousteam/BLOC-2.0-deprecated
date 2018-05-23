@@ -146,7 +146,6 @@ WalletGreen::WalletGreen(System::Dispatcher& dispatcher, const Currency& currenc
   m_pendingBalance(0),
   m_transactionSoftLockTime(transactionSoftLockTime)
 {
-  m_upperTransactionSizeLimit = parameters::CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_CURRENT * 125 / 100 - m_currency.minerTxBlobReservedSize();
   m_readyEvent.set();
 }
 
@@ -156,6 +155,23 @@ WalletGreen::~WalletGreen() {
   }
 
   m_dispatcher.yield(); //let remote spawns finish
+}
+
+void WalletGreen::createViewWallet(const std::string &path,
+                                   const std::string &password,
+                                   const std::string address,
+                                   const Crypto::SecretKey &viewSecretKey)
+{
+    CryptoNote::AccountPublicAddress publicKeys;
+    uint64_t prefix;
+
+    if (!CryptoNote::parseAccountAddressString(prefix, publicKeys, address))
+    {
+        throw std::runtime_error("Failed to parse address!");
+    }
+
+    initializeWithViewKey(path, password, viewSecretKey);
+    createAddress(publicKeys.spendPublicKey);
 }
 
 void WalletGreen::initialize(const std::string& path, const std::string& password) {
@@ -197,12 +213,31 @@ void WalletGreen::doShutdown() {
 
   m_containerStorage.close();
   m_walletsContainer.clear();
+
   clearCaches(true, true);
 
   std::queue<WalletEvent> noEvents;
   std::swap(m_events, noEvents);
 
   m_state = WalletState::NOT_INITIALIZED;
+}
+
+void WalletGreen::clearCacheAndShutdown()
+{
+  if (m_walletsContainer.size() != 0) {
+    m_synchronizer.unsubscribeConsumerNotifications(m_viewPublicKey, this);
+  }
+
+  stopBlockchainSynchronizer();
+  m_blockchainSynchronizer.removeObserver(this);
+
+  clearCaches(true, true);
+
+  saveWalletCache(m_containerStorage, m_key, WalletSaveLevel::SAVE_ALL, "");
+
+  m_walletsContainer.clear();
+
+  shutdown();
 }
 
 void WalletGreen::clearCaches(bool clearTransactions, bool clearCachedData) {
@@ -412,58 +447,6 @@ void WalletGreen::exportWallet(const std::string& path, bool encrypt, WalletSave
   m_logger(INFO, BRIGHT_WHITE) << "Container exported";
 }
 
-void WalletGreen::resetPendingTransactions() {
-
-	m_logger(INFO, BRIGHT_WHITE) << "Clearing transaction data";
-
-	System::EventLock lk(m_readyEvent);
-
-	try 
-	{
-		//purge from wallet
-		throwIfNotInitialized();
-		throwIfStopped();
-		throwIfTrackingMode();
-
-		auto txns = getUnconfirmedTransactions();
-
-		m_logger(INFO, BRIGHT_WHITE) << "Purging " << txns.size() << " transactions...";
-
-		for (auto thisTrans : txns) {
-
-			// WalletTransaction transaction
-			m_logger(INFO, BRIGHT_WHITE) << "Found unconfirmed TXN " << thisTrans.transaction.hash << " " << thisTrans.transaction.state << " block height " <<
-				thisTrans.transaction.blockHeight;
-
-			//TODO purge from pool?
-
-			//updateTransactionStateAndPushEvent(i, WalletTransactionState::DELETED);
-			try {
-				
-				Tools::ScopeExit releaseContext([this, &thisTrans] {
-					m_dispatcher.yield();					
-				});
-
-				removeUnconfirmedTransaction(thisTrans.transaction.hash);
-			}
-			catch (...) {
-				m_logger(ERROR, BRIGHT_RED) << "eRROR purging txn " << thisTrans.transaction.hash;
-			}
-
-			m_logger(INFO, BRIGHT_WHITE) << "Finished purging txn";
-		}		
-	}
-	catch (const std::exception& e) {
-		m_logger(ERROR, BRIGHT_RED) << "Failed to remove unconfirmed txn: " << e.what();
-	}
-	
-	/*
-	stopBlockchainSynchronizer();
-	clearCaches(false, true);
-	subscribeWallets();
-	*/
-}
-
 void WalletGreen::load(const std::string& path, const std::string& password, std::string& extra) {
   m_logger(INFO, BRIGHT_WHITE) << "Loading container...";
 
@@ -569,8 +552,6 @@ void WalletGreen::loadContainerStorage(const std::string& path) {
     decryptKeyPair(prefix->encryptedViewKeys, m_viewPublicKey, m_viewSecretKey, creationTimestamp);
     throwIfKeysMismatch(m_viewSecretKey, m_viewPublicKey, "Restored view public key doesn't correspond to secret key");
     m_logger = Logging::LoggerRef(m_logger.getLogger(), "WalletGreen/" + podToHex(m_viewPublicKey).substr(0, 5));
-
-	//m_logger(DEBUGGING) << "Loaded wallet with private view key " << m_viewSecretKey << " ; public spend key " << m_viewPublicKey;
 
     loadSpendKeys();
 
@@ -787,10 +768,8 @@ void WalletGreen::loadSpendKeys() {
     } else {
       if (!Crypto::check_key(wallet.spendPublicKey)) {
         throw std::system_error(make_error_code(error::WRONG_PASSWORD), "Public spend key is incorrect");
-	  }
+      }
     }
-
-	//m_logger(DEBUGGING) << "Loaded wallet with private spend key " << wallet.spendSecretKey << " ; public spend key " << wallet.spendPublicKey;
 
     wallet.actualBalance = 0;
     wallet.pendingBalance = 0;
@@ -821,6 +800,7 @@ void WalletGreen::subscribeWallets() {
 
       auto& subscription = m_synchronizer.addSubscription(sub);
       bool r = index.modify(it, [&subscription](WalletRecord& rec) { rec.container = &subscription.getContainer(); });
+      if (r) {}
       assert(r);
 
       subscription.addObserver(this);
@@ -1116,8 +1096,7 @@ std::string WalletGreen::addWallet(const Crypto::PublicKey& spendPublicKey, cons
   if (insertIt != index.end()) {
     m_logger(ERROR, BRIGHT_RED) << "Failed to add wallet: address already exists, " <<
       m_currency.accountAddressAsString(AccountPublicAddress{spendPublicKey, m_viewPublicKey});
-        auto address = m_currency.accountAddressAsString({ spendPublicKey, m_viewPublicKey });
-    return address;
+    throw std::system_error(make_error_code(error::ADDRESS_ALREADY_EXISTS));
   }
 
   m_containerStorage.push_back(encryptKeyPair(spendPublicKey, spendSecretKey, creationTimestamp));
@@ -1602,6 +1581,44 @@ size_t WalletGreen::doTransfer(const TransactionParameters& transactionParameter
   return validateSaveAndSendTransaction(*preparedTransaction.transaction, preparedTransaction.destinations, false, true);
 }
 
+size_t WalletGreen::getTxSize(const TransactionParameters &sendingTransaction)
+{
+  System::EventLock lk(m_readyEvent);
+
+  throwIfNotInitialized();
+  throwIfTrackingMode();
+  throwIfStopped();
+
+  CryptoNote::AccountPublicAddress changeDestination = getChangeDestination(sendingTransaction.changeDestination, sendingTransaction.sourceAddresses);
+
+  std::vector<WalletOuts> wallets;
+  if (!sendingTransaction.sourceAddresses.empty()) {
+    wallets = pickWallets(sendingTransaction.sourceAddresses);
+  } else {
+    wallets = pickWalletsWithMoney();
+  }
+
+  PreparedTransaction preparedTransaction;
+  prepareTransaction(
+    std::move(wallets),
+    sendingTransaction.destinations,
+    sendingTransaction.fee,
+    sendingTransaction.mixIn,
+    sendingTransaction.extra,
+    sendingTransaction.unlockTimestamp,
+    sendingTransaction.donation,
+    changeDestination,
+    preparedTransaction);
+
+  BinaryArray transactionData = preparedTransaction.transaction->getTransactionData();
+  return transactionData.size();
+}
+
+bool WalletGreen::txIsTooLarge(const TransactionParameters& sendingTransaction)
+{
+  return getTxSize(sendingTransaction) > getMaxTxSize();
+}
+
 size_t WalletGreen::makeTransaction(const TransactionParameters& sendingTransaction) {
   size_t id = WALLET_INVALID_TRANSACTION_ID;
   Tools::ScopeExit releaseContext([this, &id] {
@@ -1820,6 +1837,7 @@ bool WalletGreen::updateWalletTransactionInfo(size_t transactionId, const Crypto
     }
   });
 
+  if (r) {}
   assert(r);
 
   if (updated) {
@@ -2125,15 +2143,11 @@ void WalletGreen::sendTransaction(const CryptoNote::Transaction& cryptoNoteTrans
 size_t WalletGreen::validateSaveAndSendTransaction(const ITransactionReader& transaction, const std::vector<WalletTransfer>& destinations, bool isFusion, bool send) {
   BinaryArray transactionData = transaction.getTransactionData();
 
-  if (isFusion) {
-	  m_logger(DEBUGGING) << "Fusion transactions temporarily disabled until network is more mature! Rejecting txn "
-		  << transaction.getTransactionHash();
-	  throw std::system_error(make_error_code(error::INTERNAL_WALLET_ERROR), "Fusion transaction rejected");
-  }
+  size_t maxTxSize = getMaxTxSize();
 
-  if (transactionData.size() > m_upperTransactionSizeLimit) {
+  if (transactionData.size() > maxTxSize) {
     m_logger(ERROR, BRIGHT_RED) << "Transaction is too big. Transaction hash " << transaction.getTransactionHash() <<
-      ", size " << transactionData.size() << ", size limit " << m_upperTransactionSizeLimit;
+      ", size " << transactionData.size() << ", size limit " << maxTxSize;
     throw std::system_error(make_error_code(error::TRANSACTION_SIZE_TOO_BIG));
   }
 
@@ -2652,6 +2666,7 @@ void WalletGreen::onTransactionUpdated(const Crypto::PublicKey&, const Crypto::H
     // Don't move this code to the following remote spawn, because it guarantees that the container has the transaction
     uint64_t outputsAmount;
     bool found = container->getTransactionInformation(transactionHash, info, &inputsAmount, &outputsAmount);
+    if (found) {}
     assert(found);
 
     ContainerAmounts containerAmounts;
@@ -2820,6 +2835,15 @@ void WalletGreen::startBlockchainSynchronizer() {
     m_blockchainSynchronizer.start();
     m_blockchainSynchronizerStarted = true;
   }
+}
+
+/* The blockchain events are sent to us from the blockchain synchronizer,
+   but they appear to not get executed on the dispatcher until the synchronizer
+   stops. After some investigation, it appears that we need to run this
+   archaic line of code to run other code on the dispatcher? */
+void WalletGreen::updateInternalCache() {
+    System::RemoteContext<void> updateInternalBC(m_dispatcher, [this] () {});
+    updateInternalBC.get();
 }
 
 void WalletGreen::stopBlockchainSynchronizer() {
@@ -3030,7 +3054,8 @@ size_t WalletGreen::createFusionTransaction(uint64_t threshold, uint16_t mixin,
   std::unique_ptr<ITransaction> fusionTransaction;
   size_t transactionSize;
   int round = 0;
-  uint64_t transactionAmount;
+  uint64_t transactionAmount = 0;
+  if (transactionAmount) {}
   do {
     if (round != 0) {
       fusionInputs.pop_back();
@@ -3255,7 +3280,7 @@ std::vector<TransactionsInBlockInfo> WalletGreen::getTransactionsInBlocks(uint32
 
   for (uint32_t height = blockIndex; height < stopIndex; ++height) {
     TransactionsInBlockInfo info;
-    info.blockHash = m_blockchain[height];
+    info.blockHash = m_blockchain[height-1];
 
     auto lowerBound = blockHeightIndex.lower_bound(height);
     auto upperBound = blockHeightIndex.upper_bound(height);
@@ -3446,6 +3471,52 @@ void WalletGreen::deleteFromUncommitedTransactions(const std::vector<size_t>& de
   for (auto transactionId: deletedTransactions) {
     m_uncommitedTransactions.erase(transactionId);
   }
+}
+
+/* The formula for the block size is as follows. Calculate the
+   maxBlockCumulativeSize. This is equal to:
+   100,000 + ((height * 102,400) / 1,051,200)
+   At a block height of 400k, this gives us a size of 138,964.
+   The constants this calculation arise from can be seen below, or in
+   src/CryptoNoteCore/Currency.cpp::maxBlockCumulativeSize(). Call this value
+   x.
+
+   Next, calculate the median size of the last 100 blocks. Take the max of
+   this value, and 100,000. Multiply this value by 1.25. Call this value y.
+
+   Finally, return the minimum of x and y.
+
+   Or, in short: min(140k (slowly rising), max(125k, median(last 100 blocks size)))
+   Block size will always be 125k or greater (Assuming non testnet)
+
+   To get the max transaction size, remove 600 from this value, for the
+   reserved miner transaction.
+
+   We are going to ignore the median(last 100 blocks size), as it is possible
+   for a transaction to be valid for inclusion in a block when it is submitted,
+   but not when it actually comes to be mined, for example if the median
+   block size suddenly decreases. This gives a bit of a lower cap of max
+   tx sizes, but prevents anything getting stuck in the pool.
+
+*/
+size_t WalletGreen::getMaxTxSize()
+{
+    uint32_t currentHeight = m_node.getLastKnownBlockHeight();
+
+    size_t growth = (currentHeight * CryptoNote
+                                   ::parameters
+                                   ::MAX_BLOCK_SIZE_GROWTH_SPEED_NUMERATOR) /
+
+                    CryptoNote
+                  ::parameters
+                  ::MAX_BLOCK_SIZE_GROWTH_SPEED_DENOMINATOR;
+
+    size_t x = CryptoNote::parameters::MAX_BLOCK_SIZE_INITIAL + growth;
+
+    size_t y = 125000;
+
+    return std::min(x, y) - CryptoNote::parameters
+                                      ::CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 }
 
 } //namespace CryptoNote

@@ -17,26 +17,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
-#include <SimpleWallet/ColouredMsg.h>
 #include <SimpleWallet/Types.h>
 
-enum Action {Open, Generate, Import, ViewWallet};
+#include <string>
 
-Action getAction(Config &config);
+char* getCmdOption(char ** begin, char ** end, const std::string & option);
 
-void welcomeMsg();
+bool cmdOptionExists(char** begin, char** end, const std::string& option);
 
-void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
-         Config &config);
+Config parseArguments(int argc, char **argv);
 
-void inputLoop(std::shared_ptr<WalletInfo> &walletInfo,
-               CryptoNote::INode &node);
+void helpMessage();
 
-bool shutdown(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
-              bool &alreadyShuttingDown);
-
-std::string getInputAndDoWorkWhileIdle(std::shared_ptr<WalletInfo> &walletInfo);
-
-
-Maybe<std::shared_ptr<WalletInfo>> handleAction(CryptoNote::WalletGreen &wallet,
-                                                Action action, Config &config);
+void versionMessage();

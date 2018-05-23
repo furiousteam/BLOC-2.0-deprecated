@@ -65,6 +65,13 @@ const size_t   CRYPTONOTE_DISPLAY_DECIMAL_POINT              = 4;
 // Fees of UINT64_C(1) = 0.0001
 const uint64_t MINIMUM_FEE                                   = UINT64_C(1);    // pow(10, 5)
 const uint64_t DEFAULT_DUST_THRESHOLD                        = UINT64_C(1);    // pow(10, 5)
+const uint16_t DEFAULT_MIXIN                                 = 0;
+/* minimum_mixin = enforced for deamon
+   minimum_mixin_no_dust = enforced for simplewallet, when dust is not present
+   if dust is present, 0 mixin allowed. Possibly later disabled, or relegated to sweep_unmixable */
+const uint16_t MINIMUM_MIXIN_NO_DUST                         = 0;
+const uint16_t MINIMUM_MIXIN_V1                              = 0;
+const uint16_t MAXIMUM_MIXIN_V1                              = 10;
 
 const uint64_t DIFFICULTY_TARGET                             = 120; // seconds
 const uint64_t EXPECTED_NUMBER_OF_BLOCKS_PER_DAY             = 24 * 60 * 60 / DIFFICULTY_TARGET;

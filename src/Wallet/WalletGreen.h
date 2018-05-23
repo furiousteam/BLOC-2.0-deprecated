@@ -62,7 +62,6 @@ public:
   virtual std::string createAddress(const Crypto::PublicKey& spendPublicKey) override;
   virtual std::vector<std::string> createAddressList(const std::vector<Crypto::SecretKey>& spendSecretKeys) override;
   virtual void deleteAddress(const std::string& address) override;
-  virtual void resetPendingTransactions();
 
   virtual uint64_t getActualBalance() const override;
   virtual uint64_t getActualBalance(const std::string& address) const override;
@@ -88,6 +87,16 @@ public:
   virtual void commitTransaction(size_t) override;
   virtual void rollbackUncommitedTransaction(size_t) override;
 
+  bool txIsTooLarge(const TransactionParameters& sendingTransaction);
+  size_t getTxSize(const TransactionParameters &sendingTransaction);
+  size_t getMaxTxSize();
+  void updateInternalCache();
+  void clearCaches(bool clearTransactions, bool clearCachedData);
+  void clearCacheAndShutdown();
+  void createViewWallet(const std::string &path, const std::string &password,
+                        const std::string address, 
+                        const Crypto::SecretKey &viewSecretKey);
+
   virtual void start() override;
   virtual void stop() override;
   virtual WalletEvent getEvent() override;
@@ -108,7 +117,6 @@ protected:
   void throwIfStopped() const;
   void throwIfTrackingMode() const;
   void doShutdown();
-  void clearCaches(bool clearTransactions, bool clearCachedData);
   void convertAndLoadWalletFile(const std::string& path, std::ifstream&& walletFileStream);
   static void decryptKeyPair(const EncryptedWalletRecord& cipher, Crypto::PublicKey& publicKey, Crypto::SecretKey& secretKey,
     uint64_t& creationTimestamp, const Crypto::chacha8_key& key);

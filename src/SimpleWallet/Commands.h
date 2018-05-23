@@ -20,23 +20,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <SimpleWallet/ColouredMsg.h>
 #include <SimpleWallet/Types.h>
 
-enum Action {Open, Generate, Import, ViewWallet};
+#include <Wallet/WalletGreen.h>
 
-Action getAction(Config &config);
+void printPrivateKeys(CryptoNote::WalletGreen &wallet, bool viewWallet);
 
-void welcomeMsg();
+void help(bool viewWallet);
 
-void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
-         Config &config);
+void reset(CryptoNote::INode &node, std::shared_ptr<WalletInfo> &walletInfo);
 
-void inputLoop(std::shared_ptr<WalletInfo> &walletInfo,
-               CryptoNote::INode &node);
+void blockchainHeight(CryptoNote::INode &node, CryptoNote::WalletGreen &wallet);
 
-bool shutdown(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
-              bool &alreadyShuttingDown);
+void balance(CryptoNote::INode &node, CryptoNote::WalletGreen &wallet,
+             bool viewWallet);
 
-std::string getInputAndDoWorkWhileIdle(std::shared_ptr<WalletInfo> &walletInfo);
-
-
-Maybe<std::shared_ptr<WalletInfo>> handleAction(CryptoNote::WalletGreen &wallet,
-                                                Action action, Config &config);
+void exportKeys(std::shared_ptr<WalletInfo> &walletInfo);
