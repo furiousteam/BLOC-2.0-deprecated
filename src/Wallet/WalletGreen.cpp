@@ -541,6 +541,58 @@ void WalletGreen::load(const std::string& path, const std::string& password) {
   load(path, password, extra);
 }
 
+void WalletGreen::resetPendingTransactions() {
+
+	m_logger(INFO, BRIGHT_WHITE) << "Clearing transaction data";
+
+	System::EventLock lk(m_readyEvent);
+
+	try 
+	{
+		//purge from wallet
+		throwIfNotInitialized();
+		throwIfStopped();
+		throwIfTrackingMode();
+
+		auto txns = getUnconfirmedTransactions();
+
+		m_logger(INFO, BRIGHT_WHITE) << "Purging " << txns.size() << " transactions...";
+
+		for (auto thisTrans : txns) {
+
+			// WalletTransaction transaction
+			m_logger(INFO, BRIGHT_WHITE) << "Found unconfirmed TXN " << thisTrans.transaction.hash << " " << thisTrans.transaction.state << " block height " <<
+				thisTrans.transaction.blockHeight;
+
+			//TODO purge from pool?
+
+			//updateTransactionStateAndPushEvent(i, WalletTransactionState::DELETED);
+			try {
+				
+				Tools::ScopeExit releaseContext([this, &thisTrans] {
+					m_dispatcher.yield();					
+				});
+
+				removeUnconfirmedTransaction(thisTrans.transaction.hash);
+			}
+			catch (...) {
+				m_logger(ERROR, BRIGHT_RED) << "eRROR purging txn " << thisTrans.transaction.hash;
+			}
+
+			m_logger(INFO, BRIGHT_WHITE) << "Finished purging txn";
+		}		
+	}
+	catch (const std::exception& e) {
+		m_logger(ERROR, BRIGHT_RED) << "Failed to remove unconfirmed txn: " << e.what();
+	}
+	
+	/*
+	stopBlockchainSynchronizer();
+	clearCaches(false, true);
+	subscribeWallets();
+	*/
+}
+
 void WalletGreen::loadContainerStorage(const std::string& path) {
   try {
     m_containerStorage.open(path, FileMappedVectorOpenMode::OPEN, sizeof(ContainerStoragePrefix));
