@@ -1113,6 +1113,53 @@ std::error_code WalletService::estimateFusion(uint64_t threshold, const std::vec
   return std::error_code();
 }
 
+std::error_code WalletService::optimize(const std::string& address, std::string& transactionHash) {
+  try {
+    System::EventLock lk(readyEvent);
+
+    validateAddresses({ address }, currency, logger);
+
+    uint64_t threshold = wallet.getActualBalance(address);
+    uint64_t bestThreshold = wallet.getActualBalance(address);
+    size_t optimizable = 0;
+
+    /* Find the best threshold by starting at threshold and decreasing by
+       half till we get to the minimum amount, storing the threshold that
+       gave us the most amount of optimizable amounts */
+    while (threshold > CryptoNote::parameters::MINIMUM_FEE)
+    {
+        CryptoNote::IFusionManager::EstimateResult r = fusionManager.estimate(threshold, { address });
+
+        if (r.fusionReadyCount > optimizable)
+        {
+            optimizable = r.fusionReadyCount;
+            bestThreshold = threshold;
+        }
+
+        threshold /= 2;
+    }
+
+    /* Can't optimize */
+    if (optimizable == 0)
+    {
+        return make_error_code(CryptoNote::error::OBJECT_NOT_FOUND);
+    }
+
+    size_t transactionId = fusionManager.createFusionTransaction(bestThreshold, CryptoNote::parameters::DEFAULT_MIXIN, { address }, address);
+    transactionHash = Common::podToHex(wallet.getTransaction(transactionId).hash);
+
+    logger(Logging::INFO) << "Fusion transaction " << transactionHash << " has been sent";
+  } catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while optimizing wallet: " << x.what();
+    return x.code();
+  } catch (std::exception& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while optimizing wallet: " << x.what();
+    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
+  }
+
+  return std::error_code();
+}
+
 void WalletService::refresh() {
   try {
     logger(Logging::DEBUGGING) << "Refresh is started";

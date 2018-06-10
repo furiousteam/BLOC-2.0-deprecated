@@ -411,4 +411,18 @@ struct EstimateFusion {
   };
 };
 
+struct Optimize {
+  struct Request {
+    std::string address;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string transactionHash;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
 } //namespace PaymentService

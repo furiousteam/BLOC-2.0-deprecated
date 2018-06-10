@@ -343,4 +343,12 @@ void EstimateFusion::Response::serialize(CryptoNote::ISerializer& serializer) {
   serializer(totalOutputCount, "totalOutputCount");
 }
 
+void Optimize::Request::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(address, "address");
+}
+
+void Optimize::Response::serialize(CryptoNote::ISerializer& serializer) {
+  serializer(transactionHash, "transactionHash");
+}
+
 }

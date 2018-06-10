@@ -95,6 +95,7 @@ private:
 
   std::error_code handleSendFusionTransaction(const SendFusionTransaction::Request& request, SendFusionTransaction::Response& response);
   std::error_code handleEstimateFusion(const EstimateFusion::Request& request, EstimateFusion::Response& response);
+  std::error_code handleOptimize(const Optimize::Request& request, Optimize::Response& response);
 };
 
 }//namespace PaymentService
