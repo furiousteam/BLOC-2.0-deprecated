@@ -3567,8 +3567,7 @@ size_t WalletGreen::getMaxTxSize()
 
     size_t y = 125000;
 
-    return std::min(x, y) - CryptoNote::parameters
-                                      ::CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
+    return ceil((std::min(x, y) / 2.0) - CryptoNote::parameters::CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE);
 }
 
 } //namespace CryptoNote
