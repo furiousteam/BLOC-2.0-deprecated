@@ -425,4 +425,16 @@ struct Optimize {
   };
 };
 
+struct AutoOptimize {
+  struct Request {
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+
+  struct Response {
+    std::string transactionHash;
+
+    void serialize(CryptoNote::ISerializer& serializer);
+  };
+};
+
 } //namespace PaymentService

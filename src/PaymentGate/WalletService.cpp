@@ -1160,6 +1160,92 @@ std::error_code WalletService::optimize(const std::string& address, std::string&
   return std::error_code();
 }
 
+struct WalletWithFusionCount
+{
+    std::string address;
+    size_t fusionCount;
+
+    WalletWithFusionCount(const std::string& address, const size_t& fusionCount) : address(address), fusionCount(fusionCount) {}
+};
+
+std::error_code WalletService::autoOptimize(std::string& transactionHash) {
+  try {
+    // Check if no fusions transactions is already in progress
+    std::vector<CryptoNote::WalletTransactionWithTransfers> transactions = wallet.getUnconfirmedTransactions();
+
+    for (const auto& transaction: transactions) {
+      if (wallet.isFusionTransaction(transaction.transaction)) {
+        return make_error_code(CryptoNote::error::WalletServiceErrorCode::FUSION_IN_PROGRESS);
+      }
+    }
+
+    // Get all addresses in the container
+    std::vector<std::string> addresses;
+    getAddresses(addresses);
+
+    // Determine which wallets can be optimized
+    std::vector<WalletWithFusionCount> wallets;
+
+    wallets.clear();
+    wallets.reserve(addresses.size());
+
+    for (const std::string& address: addresses) {
+      uint64_t threshold = wallet.getActualBalance(address);
+      uint64_t bestThreshold = wallet.getActualBalance(address);
+      size_t optimizable = 0;
+
+      while (threshold > CryptoNote::parameters::MINIMUM_FEE)
+      {
+          CryptoNote::IFusionManager::EstimateResult r = fusionManager.estimate(threshold, { address });
+
+          if (r.fusionReadyCount > optimizable)
+          {
+              optimizable = r.fusionReadyCount;
+              bestThreshold = threshold;
+          }
+
+          threshold /= 2;
+      }
+
+      if (optimizable > 0)
+      {
+          wallets.push_back(WalletWithFusionCount(address, optimizable));
+      }
+    }
+
+    if (addresses.empty()) {
+      return make_error_code(CryptoNote::error::WalletServiceErrorCode::ALREADY_OPTIMIZED);
+    }
+
+    // Sort the wallets
+    struct fusion_count_desc {
+      inline bool operator() (const WalletWithFusionCount& a, const WalletWithFusionCount& b)
+      {
+          return (a.fusionCount > b.fusionCount);
+      }
+    };
+
+    std::sort(wallets.begin(), wallets.end(), fusion_count_desc());
+
+    logger(Logging::INFO) << wallets.size() << " optimizable wallets: " << std::endl;
+
+    for (const WalletWithFusionCount& wallet: wallets) {
+      logger(Logging::INFO) << wallet.address << ": " << wallet.fusionCount << " inputs" <<  << std::endl;
+    }
+
+    // Optimize the wallets that needs it the most
+    auto firstWalletToOptimize = wallets.front();
+
+    optimize(firstWalletToOptimize.address, transactionHash);
+  } catch (std::system_error& e) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Could not auto optimize wallets: " << e.what();
+  } catch (std::exception& e) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Could not auto optimize wallets: " << e.what();
+  }
+
+  return std::error_code();
+}
+
 void WalletService::refresh() {
   try {
     logger(Logging::DEBUGGING) << "Refresh is started";

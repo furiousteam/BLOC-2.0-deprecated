@@ -28,7 +28,9 @@ enum class WalletServiceErrorCode {
   WRONG_PAYMENT_ID_FORMAT,
   WRONG_HASH_FORMAT,
   OBJECT_NOT_FOUND,
-  DUPLICATE_KEY
+  DUPLICATE_KEY,
+  FUSION_IN_PROGRESS,
+  ALREADY_OPTIMIZED
 };
 
 // custom category:
@@ -53,6 +55,8 @@ public:
       case WalletServiceErrorCode::WRONG_HASH_FORMAT: return "Wrong block id format";
       case WalletServiceErrorCode::OBJECT_NOT_FOUND: return "Requested object not found";
       case WalletServiceErrorCode::DUPLICATE_KEY: return "Duplicate key";
+      case WalletServiceErrorCode::FUSION_IN_PROGRESS: return "Fusion transaction is already in progress";
+      case WalletServiceErrorCode::ALREADY_OPTIMIZED: return "Wallet is already optimized";
       default: return "Unknown error";
     }
   }

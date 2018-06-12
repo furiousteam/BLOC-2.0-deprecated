@@ -58,6 +58,7 @@ PaymentServiceJsonRpcServer::PaymentServiceJsonRpcServer(System::Dispatcher& sys
   handlers.emplace("sendFusionTransaction", jsonHandler<SendFusionTransaction::Request, SendFusionTransaction::Response>(std::bind(&PaymentServiceJsonRpcServer::handleSendFusionTransaction, this, std::placeholders::_1, std::placeholders::_2)));
   handlers.emplace("estimateFusion", jsonHandler<EstimateFusion::Request, EstimateFusion::Response>(std::bind(&PaymentServiceJsonRpcServer::handleEstimateFusion, this, std::placeholders::_1, std::placeholders::_2)));
   handlers.emplace("optimize", jsonHandler<Optimize::Request, Optimize::Response>(std::bind(&PaymentServiceJsonRpcServer::handleOptimize, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("autoOptimize", jsonHandler<AutoOptimize::Request, AutoOptimize::Response>(std::bind(&PaymentServiceJsonRpcServer::handleAutoOptimize, this, std::placeholders::_1, std::placeholders::_2)));
 }
 
 void PaymentServiceJsonRpcServer::processJsonRpcRequest(const Common::JsonValue& req, Common::JsonValue& resp) {
@@ -232,6 +233,10 @@ std::error_code PaymentServiceJsonRpcServer::handleEstimateFusion(const Estimate
 
 std::error_code PaymentServiceJsonRpcServer::handleOptimize(const Optimize::Request& request, Optimize::Response& response) {
     return service.optimize(request.address, response.transactionHash);
+}
+
+std::error_code PaymentServiceJsonRpcServer::handleAutoOptimize(const AutoOptimize::Request& request, AutoOptimize::Response& response) {
+  return service.autoOptimize(response.transactionHash);
 }
 
 }

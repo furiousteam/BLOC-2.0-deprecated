@@ -351,4 +351,11 @@ void Optimize::Response::serialize(CryptoNote::ISerializer& serializer) {
   serializer(transactionHash, "transactionHash");
 }
 
+void AutoOptimize::Request::serialize(CryptoNote::ISerializer& serializer) {
+}
+
+void AutoOptimize::Response::serialize(CryptoNote::ISerializer& serializer) {
+    serializer(transactionHash, "transactionHash");
+}
+
 }

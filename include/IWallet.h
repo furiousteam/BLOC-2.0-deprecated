@@ -180,6 +180,8 @@ public:
   virtual void start() = 0;
   virtual void stop() = 0;
 
+  virtual bool isFusionTransaction(const WalletTransaction& walletTx) const = 0;
+
   //blocks until an event occurred
   virtual WalletEvent getEvent() = 0;
 };

@@ -105,6 +105,7 @@ public:
   virtual size_t createFusionTransaction(uint64_t threshold, uint16_t mixin,
     const std::vector<std::string>& sourceAddresses = {}, const std::string& destinationAddress = "") override;
   virtual bool isFusionTransaction(size_t transactionId) const override;
+  virtual bool isFusionTransaction(const WalletTransaction& walletTx) const override;
   virtual IFusionManager::EstimateResult estimate(uint64_t threshold, const std::vector<std::string>& sourceAddresses = {}) const override;
 
 protected:
@@ -219,7 +220,6 @@ protected:
   AccountKeys makeAccountKeys(const WalletRecord& wallet) const;
   size_t getTransactionId(const Crypto::Hash& transactionHash) const;
   void pushEvent(const WalletEvent& event);
-  bool isFusionTransaction(const WalletTransaction& walletTx) const;
 
   struct PreparedTransaction {
     std::unique_ptr<ITransaction> transaction;
