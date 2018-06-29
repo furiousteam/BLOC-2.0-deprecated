@@ -1230,7 +1230,7 @@ std::error_code WalletService::autoOptimize(std::string& transactionHash) {
     logger(Logging::INFO) << wallets.size() << " optimizable wallets: " << std::endl;
 
     for (const WalletWithFusionCount& wallet: wallets) {
-      logger(Logging::INFO) << wallet.address << ": " << wallet.fusionCount << " inputs" <<  << std::endl;
+      logger(Logging::INFO) << wallet.address << ": " << wallet.fusionCount << " inputs" << std::endl;
     }
 
     // Optimize the wallets that needs it the most
