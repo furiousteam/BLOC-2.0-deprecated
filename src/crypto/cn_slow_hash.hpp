@@ -152,7 +152,7 @@ public:
 
 	// Factory function enabling to temporaliy turn v1 object into v2
 	// It is caller's responsibility to ensure that v1 object is not hashing at the same time!!
-	cn_pow_hash_v2 make_borrowed(cn_pow_hash& t)
+	static cn_pow_hash_v2 make_borrowed(cn_pow_hash& t)
 	{
 		return cn_pow_hash_v2(t.lpad.as_void(), t.spad.as_void());
 	}
