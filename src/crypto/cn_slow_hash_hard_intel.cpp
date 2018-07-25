@@ -373,6 +373,10 @@ void cn_slow_hash<MEMORY,ITER,VERSION>::hardware_hash(const void* in, size_t len
 			int32_t d  = scratchpad_ptr(idx0).as_dword(2);
 			int64_t q = n / (d | 5);
 			scratchpad_ptr(idx0).as_qword(0) = n ^ q;
+			
+	if(VERSION > 1)
+		d = ~d;
+			
 			idx0 = d ^ q;
 		}
 	}
@@ -399,6 +403,7 @@ void cn_slow_hash<MEMORY,ITER,VERSION>::hardware_hash(const void* in, size_t len
 }
 
 template class cn_slow_hash<4*1024*1024, 0x40000, 1>;
+template class cn_slow_hash<4*1024*1024, 0x40000, 2>;
 
 }
 
