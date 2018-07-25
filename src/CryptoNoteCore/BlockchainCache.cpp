@@ -644,7 +644,7 @@ uint32_t BlockchainCache::getTimestampLowerBoundBlockIndex(uint64_t timestamp) c
     return 0;
   }
 
-try {
+  try {
     uint32_t blockIndex = parent->getTimestampLowerBoundBlockIndex(timestamp);
     return blockIndex != INVALID_BLOCK_INDEX ? blockIndex : startIndex;
   } catch (std::runtime_error&) {
@@ -1129,12 +1129,12 @@ Difficulty BlockchainCache::getDifficultyForNextBlock() const {
 Difficulty BlockchainCache::getDifficultyForNextBlock(uint32_t blockIndex) const {
   assert(blockIndex <= getTopBlockIndex());
 
-uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(blockIndex+1);
-auto timestamps = getLastTimestamps(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion, blockIndex),
+  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(blockIndex+1);
+  auto timestamps = getLastTimestamps(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion, blockIndex), blockIndex, skipGenesisBlock);
   auto commulativeDifficulties =
-     getLastCumulativeDifficulties(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion, blockIndex), blockIndex, skipGenesisBlock);
+      getLastCumulativeDifficulties(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion, blockIndex), blockIndex, skipGenesisBlock);
 
-return currency.getNextDifficulty(nextBlockMajorVersion, blockIndex, std::move(timestamps), std::move(commulativeDifficulties));
+  return currency.getNextDifficulty(nextBlockMajorVersion, blockIndex, std::move(timestamps), std::move(commulativeDifficulties));
 }
 
 Difficulty BlockchainCache::getCurrentCumulativeDifficulty() const {
