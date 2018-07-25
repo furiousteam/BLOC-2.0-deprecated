@@ -474,6 +474,8 @@ Difficulty Currency::nextDifficultyV3(std::vector<std::uint64_t> timestamps, std
         } 
     }
 
+    if(L <= 0) L = 1;
+
     next_D = (static_cast<int64_t>(cumulativeDifficulties[N] - cumulativeDifficulties[0]) * T * (N+1) * 99) / (100 * 2 * L);
     prev_D = cumulativeDifficulties[N] - cumulativeDifficulties[N-1];
 
