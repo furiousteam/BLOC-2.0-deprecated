@@ -113,7 +113,7 @@ const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                	= 0;
 const uint32_t UPGRADE_HEIGHT_V2                             	= 50;
 const uint32_t UPGRADE_HEIGHT_MAX_BLOCK_SIZE			            = 65000;
 const uint32_t UPGRADE_HEIGHT_V3                             	= 100;
-const uint32_t UPGRADE_HEIGHT_V4                             =  50000;
+const uint32_t UPGRADE_HEIGHT_V4                             =  40500;
 const unsigned UPGRADE_VOTING_THRESHOLD                      	= 90;               // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         	= EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                	= EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -183,7 +183,8 @@ const CheckpointData CHECKPOINTS[] = {
 	{3000, "c6e5e6730714bb03b9ade5cc1ed9c4c221611b395c7140a7b1e2886165f464c2"},
 	{5000, "9474c4e9cceaa0590db12ab3aec16aa75608a9626fded74c5f77bee6e29eb20e"},
 	{8000, "5daf3f64c60eba8fd907d2e9c9bb33d88a3fd986eb31bdec9c474a1c8839a687"},
-	{30000, "6fd1c2960dc5c6c83f4864d690d124614f9d538ad7ac798276a30035e2f144da"}};
+	{30000, "6fd1c2960dc5c6c83f4864d690d124614f9d538ad7ac798276a30035e2f144da"},
+	{40000, "f3470ae01eedc1456e7c41c57367cfd2e9fa29439e05aee1571532e18f75bfe4"}};
 
 }
 
