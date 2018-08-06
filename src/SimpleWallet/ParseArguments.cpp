@@ -62,6 +62,10 @@ Config parseArguments(int argc, char **argv)
     config.walletFile = "";
     config.walletPass = "";
 
+    config.rpcHost = "127.0.0.1";
+    config.rpcPassword = "password";
+    config.rpcPort = 2053;
+
     if (cmdOptionExists(argv, argv+argc, "-h")
      || cmdOptionExists(argv, argv+argc, "--help"))
     {
@@ -159,6 +163,40 @@ Config parseArguments(int argc, char **argv)
                     config.exit = true;
                 }
             }
+        }
+    }
+
+    if (cmdOptionExists(argv, argv+argc, "--rpc-bind-ip")) {
+        char *rpcHost = getCmdOption(argv, argv + argc, "--rpc-bind-ip");
+
+        if (rpcHost) {
+          config.rpcHost = rpcHost;
+        }
+    }
+
+    if (cmdOptionExists(argv, argv+argc, "--rpc-bind-port")) {
+        char *rpcPort = getCmdOption(argv, argv + argc, "--rpc-bind-port");
+
+        try
+        {
+            config.rpcPort = std::stoi(rpcPort);
+        }
+        catch (const std::invalid_argument &)
+        {
+            std::cout << "Failed to parse daemon port!" << std::endl;
+            config.exit = true;
+        }
+
+        if (rpcHost) {
+          config.rpcHost = rpcHost;
+        }
+    }
+
+    if (cmdOptionExists(argv, argv+argc, "--rpc-password")) {
+        char *rpcPassword = getCmdOption(argv, argv + argc, "--rpc-password");
+
+        if (rpcPassword) {
+          config.rpcPassword = rpcPassword;
         }
     }
 
