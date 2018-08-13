@@ -583,7 +583,7 @@ bool CryptoNoteProtocolHandler::on_connection_synchronized() {
   if (m_synchronized.compare_exchange_strong(val_expected, true)) {
     logger(Logging::INFO) << ENDL
       << ENDL
-      << "Always exit Blockchaincoind and Simplewallet with the \"exit\" command." << ENDL
+      << "Always exit BLOCd and Simplewallet with the \"exit\" command." << ENDL
 	  << "If you do not exit properly, you may lose your blockchain and wallet data." << ENDL
       << ENDL
       << "Use \"help\" command to see the list of available commands." << ENDL
