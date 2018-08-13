@@ -513,6 +513,10 @@ void cn_slow_hash<MEMORY,ITER,VERSION>::software_hash(const void* in, size_t len
 			int32_t d  = idx.as_dword(2);
 			int64_t q = n / (d | 5);
 			idx.as_qword(0) = n ^ q;
+
+		if(VERSION > 1)
+			d = ~d;
+
 			idx = scratchpad_ptr(d ^ q);
 		}
 
@@ -538,6 +542,10 @@ void cn_slow_hash<MEMORY,ITER,VERSION>::software_hash(const void* in, size_t len
 			int32_t d  = idx.as_dword(2); // read bytes 8 - 11
 			int64_t q = n / (d | 5);
 			idx.as_qword(0) = n ^ q;
+			
+		if(VERSION > 1)
+			d = ~d;
+
 			idx = scratchpad_ptr(d ^ q);
 		}
 	}
@@ -564,6 +572,7 @@ void cn_slow_hash<MEMORY,ITER,VERSION>::software_hash(const void* in, size_t len
 }
 
 template class cn_slow_hash<4*1024*1024, 0x40000, 1>;
+template class cn_slow_hash<4*1024*1024, 0x40000, 2>;
 
 }
 

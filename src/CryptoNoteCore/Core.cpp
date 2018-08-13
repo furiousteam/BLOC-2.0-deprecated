@@ -210,6 +210,7 @@ Core::Core(const Currency& currency, Logging::ILogger& logger, Checkpoints&& che
 
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
   upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
+  upgradeManager->addMajorBlockVersion(BLOCK_MAJOR_VERSION_4, currency.upgradeHeight(BLOCK_MAJOR_VERSION_4));
 
   transactionPool = std::unique_ptr<ITransactionPoolCleanWrapper>(new TransactionPoolCleanWrapper(
     std::unique_ptr<ITransactionPool>(new TransactionPool(logger)),
@@ -433,6 +434,19 @@ bool Core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockHashes, ui
     currentIndex = mainChain->getTopBlockIndex();
 
     startIndex = findBlockchainSupplement(knownBlockHashes); // throws
+    
+    // Stops bug where wallets fail to sync, because timestamps have been adjusted after syncronisation.
+    // check for a query of the blocks where the block index is non-zero, but the timestamp is zero
+    // indicating that the originator did not know the internal time of the block, but knew which block
+    // was wanted by index.  Fullfill this by getting the time of m_blocks[startIndex].timestamp.
+
+    if (startIndex > 0 && timestamp == 0) {
+      if (startIndex <= mainChain->getTopBlockIndex()) {
+        RawBlock block = mainChain->getBlockByIndex(startIndex);
+        auto blockTemplate = extractBlockTemplate(block);
+        timestamp = blockTemplate.timestamp;
+      }
+    }
 
     fullOffset = mainChain->getTimestampLowerBoundBlockIndex(timestamp);
     if (fullOffset < startIndex) {
@@ -448,8 +462,8 @@ bool Core::queryBlocksLite(const std::vector<Crypto::Hash>& knownBlockHashes, ui
     fillQueryBlockShortInfo(fullOffset, currentIndex, BLOCKS_SYNCHRONIZING_DEFAULT_COUNT, entries);
 
     return true;
-  } catch (std::exception&) {
-    // TODO log
+  } catch (std::exception& e) {
+    logger(Logging::ERROR) << "Failed to query blocks: " << e.what();
     return false;
   }
 }
@@ -512,14 +526,14 @@ Difficulty Core::getDifficultyForNextBlock() const {
   IBlockchainCache* mainChain = chainsLeaves[0];
 
   uint32_t topBlockIndex = mainChain->getTopBlockIndex();
-  auto blockMajorVersion = getBlockMajorVersionForHeight(topBlockIndex);
+  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(topBlockIndex);
 
-  size_t blocksCount = std::min(static_cast<size_t>(topBlockIndex), currency.difficultyBlocksCount(topBlockIndex));
+  size_t blocksCount = std::min(static_cast<size_t>(topBlockIndex), currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion, topBlockIndex));
 
   auto timestamps = mainChain->getLastTimestamps(blocksCount);
-  auto difficulties = mainChain->getLastCumulativeDifficulties(blocksCount);  
+  auto difficulties = mainChain->getLastCumulativeDifficulties(blocksCount);
 
-  return currency.nextDifficulty(blockMajorVersion, timestamps, difficulties);
+  return currency.getNextDifficulty(nextBlockMajorVersion, topBlockIndex, timestamps, difficulties);
 }
 
 std::vector<Crypto::Hash> Core::findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds,
@@ -1056,6 +1070,41 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
 
   b.previousBlockHash = getTopBlockHash();
   b.timestamp = time(nullptr);
+  
+  /* Thanks to jagerman for this patch:
+     https://github.com/loki-project/loki/pull/26 */
+
+  /* How many blocks we look in the past to calculate the median timestamp */
+  uint64_t blockchain_timestamp_check_window;
+
+  if (height >= CryptoNote::parameters::LWMA_2_DIFFICULTY_BLOCK_INDEX)
+  {
+      blockchain_timestamp_check_window = CryptoNote::parameters::BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V3;
+  }
+  else
+  {
+      blockchain_timestamp_check_window = CryptoNote::parameters::BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW;
+  }
+
+  /* Skip the first N blocks, we don't have enough blocks to calculate a
+     proper median yet */
+  if (height >= blockchain_timestamp_check_window)
+  {
+      std::vector<uint64_t> timestamps;
+
+      /* For the last N blocks, get their timestamps */
+      for (size_t offset = height - blockchain_timestamp_check_window; offset < height; offset++)
+      {
+          timestamps.push_back(getBlockTimestampByIndex(offset));
+      }
+
+      uint64_t medianTimestamp = Common::medianValue(timestamps);
+
+      if (b.timestamp < medianTimestamp)
+      {
+          b.timestamp = medianTimestamp;
+      }
+  }
 
   size_t medianSize = calculateCumulativeBlocksizeLimit(height) / 2;
 
@@ -1445,7 +1494,7 @@ std::error_code Core::validateBlock(const CachedBlock& cachedBlock, IBlockchainC
     }
   }
 
-  if (block.timestamp > getAdjustedTime() + currency.blockFutureTimeLimit()) {
+  if (block.timestamp > getAdjustedTime() + currency.blockFutureTimeLimit(previousBlockIndex+1)) {
     return error::BlockValidationError::TIMESTAMP_TOO_FAR_IN_FUTURE;
   }
 

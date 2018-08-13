@@ -644,8 +644,12 @@ uint32_t BlockchainCache::getTimestampLowerBoundBlockIndex(uint64_t timestamp) c
     return 0;
   }
 
-  uint32_t blockIndex = parent->getTimestampLowerBoundBlockIndex(timestamp);
-  return blockIndex == INVALID_BLOCK_INDEX ? blockIndex : startIndex;
+  try {
+    uint32_t blockIndex = parent->getTimestampLowerBoundBlockIndex(timestamp);
+    return blockIndex != INVALID_BLOCK_INDEX ? blockIndex : startIndex;
+  } catch (std::runtime_error&) {
+    return startIndex;
+  }
 }
 
 bool BlockchainCache::getTransactionGlobalIndexes(const Crypto::Hash& transactionHash,
@@ -1124,11 +1128,13 @@ Difficulty BlockchainCache::getDifficultyForNextBlock() const {
 
 Difficulty BlockchainCache::getDifficultyForNextBlock(uint32_t blockIndex) const {
   assert(blockIndex <= getTopBlockIndex());
-  auto timestamps = getLastTimestamps(currency.difficultyBlocksCount(blockIndex), blockIndex, skipGenesisBlock);
+
+  uint8_t nextBlockMajorVersion = getBlockMajorVersionForHeight(blockIndex+1);
+  auto timestamps = getLastTimestamps(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion, blockIndex), blockIndex, skipGenesisBlock);
   auto commulativeDifficulties =
-      getLastCumulativeDifficulties(currency.difficultyBlocksCount(blockIndex), blockIndex, skipGenesisBlock);
-  return currency.nextDifficulty(currency.blockVersionByHeight(blockIndex),
-	  std::move(timestamps), std::move(commulativeDifficulties));
+      getLastCumulativeDifficulties(currency.difficultyBlocksCountByBlockVersion(nextBlockMajorVersion, blockIndex), blockIndex, skipGenesisBlock);
+
+  return currency.getNextDifficulty(nextBlockMajorVersion, blockIndex, std::move(timestamps), std::move(commulativeDifficulties));
 }
 
 Difficulty BlockchainCache::getCurrentCumulativeDifficulty() const {
@@ -1203,6 +1209,13 @@ uint32_t BlockchainCache::getBlockIndexContainingTx(const Crypto::Hash& transact
   auto it = index.find(transactionHash);
   assert(it != index.end());
   return it->blockIndex;
+}
+
+uint8_t BlockchainCache::getBlockMajorVersionForHeight(uint32_t height) const {
+  UpgradeManager upgradeManager;
+  upgradeManager.addMajorBlockVersion(BLOCK_MAJOR_VERSION_2, currency.upgradeHeight(BLOCK_MAJOR_VERSION_2));
+  upgradeManager.addMajorBlockVersion(BLOCK_MAJOR_VERSION_3, currency.upgradeHeight(BLOCK_MAJOR_VERSION_3));
+  return upgradeManager.getBlockMajorVersion(height);
 }
 
 void BlockchainCache::fixChildrenParent(IBlockchainCache* p) {

@@ -132,6 +132,7 @@ private:
 
 template<size_t MEMORY, size_t ITER, size_t VERSION> class cn_slow_hash;
 using cn_pow_hash = cn_slow_hash<4*1024*1024, 0x40000, 1>;
+using cn_pow_hash_v2 = cn_slow_hash<4*1024*1024, 0x40000, 2>;
 
 template<size_t MEMORY, size_t ITER, size_t VERSION>
 class cn_slow_hash
@@ -149,12 +150,13 @@ public:
 		other.spad.set(nullptr);
 	}
 
-	// Factory function enabling to temporaliy turn v2 object into v1
-	// It is caller's responsibility to ensure that v2 object is not hashing at the same time!!
-	// cn_pow_hash_v1 make_borrowed(cn_pow_hash_v2& t)
-	// {
-	//	return cn_pow_hash_v1(t.lpad.as_void(), t.spad.as_void());
-	// }
+	// Factory function enabling to temporaliy turn v1 object into v2
+	// It is caller's responsibility to ensure that v1 object is not hashing at the same time!!
+	static cn_pow_hash_v2 make_borrowed(cn_pow_hash& t)
+	{
+		return cn_pow_hash_v2(t.lpad.as_void(), t.spad.as_void());
+	}
+
 
 	cn_slow_hash& operator= (cn_slow_hash&& other) noexcept
 	{
@@ -195,17 +197,16 @@ public:
 
 private:
 	static constexpr size_t MASK = ((MEMORY-1) >> 4) << 4;
-	//friend cn_pow_hash_v1;
-	//friend cn_pow_hash_v2;
-
-	// Constructor enabling v1 hash to borrow v2's buffer
-	//cn_slow_hash(void* lptr, void* sptr)
-	//{
-	//	lpad.set(lptr);
-	//	spad.set(sptr);
-	//	borrowed_pad = true;
-	//}
-
+	friend cn_pow_hash;
+	friend cn_pow_hash_v2;
+	// Constructor enabling v2 hash to borrow v1's buffer
+	cn_slow_hash(void* lptr, void* sptr)
+	{
+		lpad.set(lptr);
+		spad.set(sptr);
+		borrowed_pad = true;
+	}
+	
 	inline bool check_override()
 	{
 		const char *env = getenv("SUMO_USE_SOFTWARE_AES");
@@ -253,6 +254,7 @@ private:
 };
 
 extern template class cn_slow_hash<4*1024*1024, 0x40000, 1>;
+extern template class cn_slow_hash<4*1024*1024, 0x40000, 2>;
 
 } //namespace Crypto
 
