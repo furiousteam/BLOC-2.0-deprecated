@@ -162,11 +162,11 @@ const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          //
 const char     P2P_STAT_TRUSTED_PUB_KEY[] = "";
 
 const char* const SEED_NODES[] = {
-	"atlantic.bloc.money:2082",
-	"pacific.bloc.money:2082",
-	"baltic.bloc.money:2082",
-	"europe.bloc.money:2082",
-	"asia.bloc.money:2082"
+	"174.138.59.135:2082",//atlantic
+	"138.197.208.94:2082",//pacific
+	"95.216.3.162:2082",//baltic
+	"88.198.57.162:2082",//europe
+	"206.189.42.115:2082"//asia
 		
 };
 
