@@ -44,7 +44,7 @@ namespace CryptoNote {
 
 class JsonRpcServer : HttpServer {
 public:
-  JsonRpcServer(System::Dispatcher& sys, System::Event& stopEvent, Logging::ILogger& loggerGroup, PaymentService::Configuration& config);
+  JsonRpcServer(System::Dispatcher& sys, System::Event& stopEvent, Logging::ILogger& loggerGroup);
   JsonRpcServer(const JsonRpcServer&) = delete;
 
   void start(const std::string& bindAddress, uint16_t bindPort);
@@ -59,7 +59,6 @@ protected:
   static void makeJsonParsingErrorResponse(Common::JsonValue& resp);
 
   virtual void processJsonRpcRequest(const Common::JsonValue& req, Common::JsonValue& resp) = 0;
-  PaymentService::Configuration& config;
 
 private:
   // HttpServer

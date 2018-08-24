@@ -73,7 +73,7 @@ target_link_libraries(Rpc CryptoNoteCore Logging P2P)
 
 target_link_libraries(ConnectivityTool CryptoNoteCore Common Logging Crypto P2P Rpc Http Serialization System ${Boost_LIBRARIES})
 target_link_libraries(Daemon P2P Rpc Serialization System Http Logging CryptoNoteCore Crypto Common upnpc-static rocksdb ${Boost_LIBRARIES} )
-target_link_libraries(SimpleWallet Wallet NodeRpcProxy Transfers Rpc P2P upnpc-static Http Serialization CryptoNoteCore System Logging Common Crypto ${Boost_LIBRARIES})
+target_link_libraries(SimpleWallet Wallet NodeRpcProxy PaymentGate JsonRpcServer Transfers Rpc P2P upnpc-static Http Serialization CryptoNoteCore System Logging Common Crypto ${Boost_LIBRARIES})
 target_link_libraries(SimpleWalletRPC Wallet NodeRpcProxy Transfers Rpc P2P upnpc-static Http Serialization CryptoNoteCore System Logging Common Crypto ${Boost_LIBRARIES})
 target_link_libraries(PaymentGateService PaymentGate JsonRpcServer Wallet NodeRpcProxy Transfers P2P CryptoNoteCore Crypto Rpc Http Serialization System Logging Common InProcessNode upnpc-static BlockchainExplorer rocksdb ${Boost_LIBRARIES})
 target_link_libraries(Miner CryptoNoteCore Rpc Serialization System Http Logging Common Crypto ${Boost_LIBRARIES})

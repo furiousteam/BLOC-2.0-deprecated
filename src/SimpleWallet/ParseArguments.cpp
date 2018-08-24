@@ -186,10 +186,6 @@ Config parseArguments(int argc, char **argv)
             std::cout << "Failed to parse daemon port!" << std::endl;
             config.exit = true;
         }
-
-        if (rpcHost) {
-          config.rpcHost = rpcHost;
-        }
     }
 
     if (cmdOptionExists(argv, argv+argc, "--rpc-password")) {

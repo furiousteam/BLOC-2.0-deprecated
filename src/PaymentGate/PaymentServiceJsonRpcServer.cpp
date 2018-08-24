@@ -30,9 +30,10 @@
 namespace PaymentService {
 
 PaymentServiceJsonRpcServer::PaymentServiceJsonRpcServer(System::Dispatcher& sys, System::Event& stopEvent, WalletService& service, Logging::ILogger& loggerGroup, PaymentService::Configuration& config) 
-  : JsonRpcServer(sys, stopEvent, loggerGroup, config)
+  : JsonRpcServer(sys, stopEvent, loggerGroup)
   , service(service)
   , logger(loggerGroup, "PaymentServiceJsonRpcServer")
+  , config(config)
 {
   handlers.emplace("save", jsonHandler<Save::Request, Save::Response>(std::bind(&PaymentServiceJsonRpcServer::handleSave, this, std::placeholders::_1, std::placeholders::_2)));
   handlers.emplace("export", jsonHandler<Export::Request, Export::Response>(std::bind(&PaymentServiceJsonRpcServer::handleExport, this, std::placeholders::_1, std::placeholders::_2)));

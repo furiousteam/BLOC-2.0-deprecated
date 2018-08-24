@@ -36,8 +36,8 @@ struct GetBalance {
   };
 
   struct Response {
-    uint64_t locked_amount;
-    uint64_t available_balance;
+    uint64_t lockedAmount;
+    uint64_t availableBalance;
 
     void serialize(CryptoNote::ISerializer& serializer);
   };

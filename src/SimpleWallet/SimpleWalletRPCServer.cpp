@@ -15,13 +15,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with BLOC.  If not, see <http://www.gnu.org/licenses/>.
 
+#include "SimpleWalletRPCMessages.h"
 #include "SimpleWalletRPCServer.h"
 
 #include <functional>
 
-#include "PaymentServiceJsonRpcMessages.h"
-#include "WalletService.h"
 
+#include <System/EventLock.h>
 #include "Serialization/JsonInputValueSerializer.h"
 #include "Serialization/JsonOutputStreamSerializer.h"
 
@@ -29,19 +29,19 @@
 
 namespace SimpleWalletRPC {
 
-SimpleWalletRPC::SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent, WalletService& service, Logging::ILogger& loggerGroup, PaymentService::Configuration& config) 
-  : JsonRpcServer(sys, stopEvent, loggerGroup, config)
-  , service(service)
+SimpleWalletRPCServer::SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent,  CryptoNote::WalletGreen& wallet, Logging::ILogger& loggerGroup) 
+  : JsonRpcServer(sys, stopEvent, loggerGroup)
+  , wallet(wallet)
   , logger(loggerGroup, "SimpleWalletRPCServer")
 {
-  handlers.emplace("save", jsonHandler<Save::Request, Save::Response>(std::bind(&SimpleWalletRPCServer::handleSave, this, std::placeholders::_1, std::placeholders::_2)));
+  //\todo check handlers.emplace("save", jsonHandler<Save::Request, Save::Response>(std::bind(&SimpleWalletRPCServer::handleSave, this, std::placeholders::_1, std::placeholders::_2)));
 }
 
-void SimpleWalletRPC::processJsonRpcRequest(const Common::JsonValue& req, Common::JsonValue& resp) {
+void SimpleWalletRPCServer::processJsonRpcRequest(const Common::JsonValue& req, Common::JsonValue& resp) {
   try {
     prepareJsonResponse(req, resp);
 
-	if (!config.legacySecurity) {
+	/*if (!config.legacySecurity) {
 	       std::string clientPassword;
 	       if (!req.contains("password")) {
 	         makeInvalidPasswordResponse(resp);
@@ -56,7 +56,7 @@ void SimpleWalletRPC::processJsonRpcRequest(const Common::JsonValue& req, Common
 	         makeInvalidPasswordResponse(resp);
 	         return;
 	       }
-	     }
+	     }*/
 
     if (!req.contains("method")) {
       logger(Logging::WARNING) << "Field \"method\" is not found in json request: " << req;
@@ -93,8 +93,20 @@ void SimpleWalletRPC::processJsonRpcRequest(const Common::JsonValue& req, Common
   }
 }
 
-std::error_code SimpleWalletRPC::handleGetBalance(const GetBalance::Request& request, GetBalance::Response& response) {
-  return service.getBalance(response.availableBalance, response.lockedAmount);
+std::error_code SimpleWalletRPCServer::handleGetBalance(const GetBalance::Request& request, GetBalance::Response& response) {
+  try {
+    System::EventLock lk(readyEvent);
+    logger(Logging::DEBUGGING) << "Getting wallet balance";
+
+    response.availableBalance = wallet.getActualBalance();
+    response.lockedAmount = wallet.getPendingBalance();
+  } catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while getting balance: " << x.what();
+    return x.code();
+  }
+
+  logger(Logging::DEBUGGING) << "Wallet actual balance: " << response.availableBalance << ", pending: " << response.lockedAmount;
+  return std::error_code();
 }
 
 }

@@ -40,6 +40,7 @@ protected:
 private:
   WalletService& service;
   Logging::LoggerRef logger;
+  PaymentService::Configuration& config;
 
   typedef std::function<void (const Common::JsonValue& jsonRpcParams, Common::JsonValue& jsonResponse)> HandlerFunction;
 

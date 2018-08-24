@@ -20,20 +20,6 @@
 
 namespace SimpleWalletRPC {
 
-struct GetBalance {
-  struct Request {
-    void serialize(CryptoNote::ISerializer& serializer);
-  };
-
-  struct Response {
-    uint64_t lockedAmount;
-    uint64_t availableBalance;
-
-    void serialize(CryptoNote::ISerializer& serializer);
-  };
-};
-
-
 void GetBalance::Request::serialize(CryptoNote::ISerializer& serializer) {
 }
 

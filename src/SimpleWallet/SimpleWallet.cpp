@@ -41,6 +41,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <SimpleWallet/Tools.h>
 #include <SimpleWallet/SimpleWalletRPCServer.h>
 #include <PaymentGateService/PaymentServiceConfiguration.h>
+#include <Logging/ConsoleLogger.h>
 
 #ifdef _WIN32
 /* Prevents windows.h redefining min/max which breaks compilation */
@@ -249,12 +250,11 @@ void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
 
   welcomeMsg();
 
-  auto rpcConfig = PaymentService::Configuration();
-  rpcConfig.bindAddress = config.rpcHost;
-  rpcConfig.bindPort = config.rpcPort;
-  rpcConfig.rpcPassword = config.rpcPassword;
-
-  SimpleWalletRPC::SimpleWalletRPCServer rpcServer(*dispatcher, *stopEvent, *service, logger, rpcConfig);
+  System::Dispatcher dispatcher;
+  System::Event stopEvent;
+  Logging::ConsoleLogger logger;
+  
+  SimpleWalletRPC::SimpleWalletRPCServer rpcServer(dispatcher, stopEvent, wallet, logger);
   rpcServer.start(config.rpcHost, config.rpcPort);
 
   inputLoop(walletInfo, node);
