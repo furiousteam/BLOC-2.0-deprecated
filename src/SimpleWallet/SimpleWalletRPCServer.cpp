@@ -33,8 +33,9 @@ SimpleWalletRPCServer::SimpleWalletRPCServer(System::Dispatcher& sys, System::Ev
   : JsonRpcServer(sys, stopEvent, loggerGroup)
   , wallet(wallet)
   , logger(loggerGroup, "SimpleWalletRPCServer")
+  , readyEvent(sys)
 {
-  //\todo check handlers.emplace("save", jsonHandler<Save::Request, Save::Response>(std::bind(&SimpleWalletRPCServer::handleSave, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("getbalance", jsonHandler<GetBalance::Request, GetBalance::Response>(std::bind(&SimpleWalletRPCServer::handleGetBalance, this, std::placeholders::_1, std::placeholders::_2)));
 }
 
 void SimpleWalletRPCServer::processJsonRpcRequest(const Common::JsonValue& req, Common::JsonValue& resp) {
@@ -95,7 +96,7 @@ void SimpleWalletRPCServer::processJsonRpcRequest(const Common::JsonValue& req, 
 
 std::error_code SimpleWalletRPCServer::handleGetBalance(const GetBalance::Request& request, GetBalance::Response& response) {
   try {
-    System::EventLock lk(readyEvent);
+    //System::EventLock lk(readyEvent); \todo re-add this lock
     logger(Logging::DEBUGGING) << "Getting wallet balance";
 
     response.availableBalance = wallet.getActualBalance();

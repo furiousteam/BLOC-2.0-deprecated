@@ -130,6 +130,16 @@ int main(int argc, char **argv)
   run(wallet, *node, config);
 }
 
+void rpc_thread(Config &config, CryptoNote::WalletGreen &wallet)
+{
+  System::Dispatcher dispatcher;
+  System::Event stopEvent(dispatcher);
+  Logging::ConsoleLogger logger;
+  
+  SimpleWalletRPC::SimpleWalletRPCServer rpcServer(dispatcher, stopEvent, wallet, logger);
+  rpcServer.start(config.rpcHost, config.rpcPort);
+}
+
 void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
          Config &config)
 {
@@ -250,12 +260,7 @@ void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
 
   welcomeMsg();
 
-  System::Dispatcher dispatcher;
-  System::Event stopEvent;
-  Logging::ConsoleLogger logger;
-  
-  SimpleWalletRPC::SimpleWalletRPCServer rpcServer(dispatcher, stopEvent, wallet, logger);
-  rpcServer.start(config.rpcHost, config.rpcPort);
+  std::thread thd(std::bind(rpc_thread, std::ref(config), std::ref(wallet)));
 
   inputLoop(walletInfo, node);
 
