@@ -37,6 +37,13 @@ SimpleWalletRPCServer::SimpleWalletRPCServer(System::Dispatcher& sys, System::Ev
   , readyEvent(sys)
 {
   handlers.emplace("getbalance", jsonHandler<GetBalance::Request, GetBalance::Response>(std::bind(&SimpleWalletRPCServer::handleGetBalance, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("transfer", jsonHandler<Transfer::Request, Transfer::Response>(std::bind(&SimpleWalletRPCServer::handleTransfer, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("store", jsonHandler<Store::Request, Store::Response>(std::bind(&SimpleWalletRPCServer::handleStore, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("get_payments", jsonHandler<GetPayments::Request, GetPayments::Response>(std::bind(&SimpleWalletRPCServer::handleGetPayments, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("get_transfers", jsonHandler<GetTransfers::Request, GetTransfers::Response>(std::bind(&SimpleWalletRPCServer::handleGetTransfers, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("get_height", jsonHandler<GetHeight::Request, GetHeight::Response>(std::bind(&SimpleWalletRPCServer::handleGetHeight, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("reset", jsonHandler<Reset::Request, Reset::Response>(std::bind(&SimpleWalletRPCServer::handleReset, this, std::placeholders::_1, std::placeholders::_2)));
+  handlers.emplace("optimize", jsonHandler<Optimize::Request, Optimize::Response>(std::bind(&SimpleWalletRPCServer::handleOptimize, this, std::placeholders::_1, std::placeholders::_2)));
   readyEvent.set();
 }
 
@@ -112,4 +119,31 @@ std::error_code SimpleWalletRPCServer::handleGetBalance(const GetBalance::Reques
   return std::error_code();
 }
 
+std::error_code SimpleWalletRPCServer::handleTransfer(const Transfer::Request& request, Transfer::Response& response) {
+  return std::error_code();
+}
+
+std::error_code SimpleWalletRPCServer::handleStore(const Store::Request& request, Store::Response& response) {
+  return std::error_code();
+}
+
+std::error_code SimpleWalletRPCServer::handleGetPayments(const GetPayments::Request& request, GetPayments::Response& response) {
+  return std::error_code();
+}
+
+std::error_code SimpleWalletRPCServer::handleGetTransfers(const GetTransfers::Request& request, GetTransfers::Response& response) {
+  return std::error_code();
+}
+
+std::error_code SimpleWalletRPCServer::handleGetHeight(const GetHeight::Request& request, GetHeight::Response& response) {
+  return std::error_code();
+}
+
+std::error_code SimpleWalletRPCServer::handleReset(const Reset::Request& request, Reset::Response& response) {
+  return std::error_code();
+}
+
+std::error_code SimpleWalletRPCServer::handleOptimize(const Optimize::Request& request, Optimize::Response& response) {
+  return std::error_code();
+}
 }

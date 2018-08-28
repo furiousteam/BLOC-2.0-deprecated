@@ -85,13 +85,13 @@ private:
   bool on_reset(const wallet_rpc::COMMAND_RPC_RESET::request& req, wallet_rpc::COMMAND_RPC_RESET::response& res);*/
 
   std::error_code handleGetBalance(const GetBalance::Request& request, GetBalance::Response& response);
-  /*std::error_code handleTransfer(const Transfer::Request& request, Transfer::Response& response);
+  std::error_code handleTransfer(const Transfer::Request& request, Transfer::Response& response);
   std::error_code handleStore(const Store::Request& request, Store::Response& response);
   std::error_code handleGetPayments(const GetPayments::Request& request, GetPayments::Response& response);
   std::error_code handleGetTransfers(const GetTransfers::Request& request, GetTransfers::Response& response);
   std::error_code handleGetHeight(const GetHeight::Request& request, GetHeight::Response& response);
   std::error_code handleReset(const Reset::Request& request, Reset::Response& response);
-  std::error_code handleOptimize(const Optimize::Request& request, Optimize::Response& response);*/
+  std::error_code handleOptimize(const Optimize::Request& request, Optimize::Response& response);
 };
 
 }//namespace SimpleWalletRPC
