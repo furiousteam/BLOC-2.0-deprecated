@@ -57,8 +57,9 @@ struct Config
     std::string walletPass;
 
     std::string rpcHost;
-    int rpcPort;
+    uint16_t rpcPort;
     std::string rpcPassword;
+	bool legacySecurity;
 };
 
 /* This borrows from haskell, and is a nicer boost::optional class. We either

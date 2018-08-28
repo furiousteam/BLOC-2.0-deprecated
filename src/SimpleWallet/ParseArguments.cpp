@@ -63,8 +63,9 @@ Config parseArguments(int argc, char **argv)
     config.walletPass = "";
 
     config.rpcHost = "127.0.0.1";
-    config.rpcPassword = "password";
+    config.rpcPassword = "";
     config.rpcPort = 2053;
+    config.legacySecurity = false;
 
     if (cmdOptionExists(argv, argv+argc, "-h")
      || cmdOptionExists(argv, argv+argc, "--help"))
@@ -194,6 +195,11 @@ Config parseArguments(int argc, char **argv)
         if (rpcPassword) {
           config.rpcPassword = rpcPassword;
         }
+    }
+    
+    
+    if (cmdOptionExists(argv, argv+argc, "--legacy-security")) {
+        config.legacySecurity = true;
     }
 
     return config;

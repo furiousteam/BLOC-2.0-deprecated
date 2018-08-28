@@ -29,35 +29,37 @@
 
 namespace SimpleWalletRPC {
 
-SimpleWalletRPCServer::SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent,  CryptoNote::WalletGreen& wallet, Logging::ILogger& loggerGroup) 
+SimpleWalletRPCServer::SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent,  CryptoNote::WalletGreen& wallet, Config& cfg, Logging::ILogger& loggerGroup) 
   : JsonRpcServer(sys, stopEvent, loggerGroup)
   , wallet(wallet)
+  , cfg(cfg)
   , logger(loggerGroup, "SimpleWalletRPCServer")
   , readyEvent(sys)
 {
   handlers.emplace("getbalance", jsonHandler<GetBalance::Request, GetBalance::Response>(std::bind(&SimpleWalletRPCServer::handleGetBalance, this, std::placeholders::_1, std::placeholders::_2)));
+  readyEvent.set();
 }
 
 void SimpleWalletRPCServer::processJsonRpcRequest(const Common::JsonValue& req, Common::JsonValue& resp) {
   try {
     prepareJsonResponse(req, resp);
 
-	/*if (!config.legacySecurity) {
-	       std::string clientPassword;
-	       if (!req.contains("password")) {
-	         makeInvalidPasswordResponse(resp);
-	         return;
-	       }   
-	       if (!req("password").isString()) {
-	         makeInvalidPasswordResponse(resp);
-	         return;
-	       }
-	       clientPassword = req("password").getString();
-	       if (clientPassword != config.rpcPassword) {
-	         makeInvalidPasswordResponse(resp);
-	         return;
-	       }
-	     }*/
+  if (!cfg.legacySecurity) {
+    std::string clientPassword;
+    if (!req.contains("password")) {
+      makeInvalidPasswordResponse(resp);
+      return;
+    }   
+    if (!req("password").isString()) {
+      makeInvalidPasswordResponse(resp);
+      return;
+    }
+    clientPassword = req("password").getString();
+    if (clientPassword != cfg.rpcPassword) {
+      makeInvalidPasswordResponse(resp);
+      return;
+    }
+  }
 
     if (!req.contains("method")) {
       logger(Logging::WARNING) << "Field \"method\" is not found in json request: " << req;
@@ -96,7 +98,7 @@ void SimpleWalletRPCServer::processJsonRpcRequest(const Common::JsonValue& req, 
 
 std::error_code SimpleWalletRPCServer::handleGetBalance(const GetBalance::Request& request, GetBalance::Response& response) {
   try {
-    //System::EventLock lk(readyEvent); \todo re-add this lock
+    System::EventLock lk(readyEvent);
     logger(Logging::DEBUGGING) << "Getting wallet balance";
 
     response.availableBalance = wallet.getActualBalance();

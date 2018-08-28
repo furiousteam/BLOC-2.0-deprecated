@@ -25,21 +25,26 @@
 #include "Serialization/JsonInputValueSerializer.h"
 #include "Serialization/JsonOutputStreamSerializer.h"
 #include "Wallet/WalletGreen.h"
+#include "SimpleWallet/Types.h"
 
 namespace SimpleWalletRPC {
 
 class SimpleWalletRPCServer : public CryptoNote::JsonRpcServer {
 public:
-  SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent, CryptoNote::WalletGreen& wallet, Logging::ILogger& loggerGroup);
+  SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent, CryptoNote::WalletGreen& wallet, Config& cfg, Logging::ILogger& loggerGroup);
   SimpleWalletRPCServer(const SimpleWalletRPCServer&) = delete;
+
+  inline void start() { CryptoNote::JsonRpcServer::start(cfg.rpcHost, cfg.rpcPort); }
 
 protected:
   virtual void processJsonRpcRequest(const Common::JsonValue& req, Common::JsonValue& resp) override;
 
 private:
   CryptoNote::WalletGreen& wallet;
+  Config& cfg;
   Logging::LoggerRef logger;
   System::Event readyEvent;
+
 
   typedef std::function<void (const Common::JsonValue& jsonRpcParams, Common::JsonValue& jsonResponse)> HandlerFunction;
 

@@ -68,6 +68,10 @@ void PaymentServiceJsonRpcServer::processJsonRpcRequest(const Common::JsonValue&
 
 	if (!config.legacySecurity) {
 	       std::string clientPassword;
+		   if(config.rpcPassword.empty()) {
+		     makeInvalidPasswordResponse(resp);
+	         return;
+		   }
 	       if (!req.contains("password")) {
 	         makeInvalidPasswordResponse(resp);
 	         return;
@@ -81,7 +85,7 @@ void PaymentServiceJsonRpcServer::processJsonRpcRequest(const Common::JsonValue&
 	         makeInvalidPasswordResponse(resp);
 	         return;
 	       }
-	     }
+	}
 
     if (!req.contains("method")) {
       logger(Logging::WARNING) << "Field \"method\" is not found in json request: " << req;

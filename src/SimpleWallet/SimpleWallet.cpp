@@ -136,8 +136,8 @@ void rpc_thread(Config &config, CryptoNote::WalletGreen &wallet)
   System::Event stopEvent(dispatcher);
   Logging::ConsoleLogger logger;
   
-  SimpleWalletRPC::SimpleWalletRPCServer rpcServer(dispatcher, stopEvent, wallet, logger);
-  rpcServer.start(config.rpcHost, config.rpcPort);
+  SimpleWalletRPC::SimpleWalletRPCServer rpcServer(dispatcher, stopEvent, wallet, config, logger);
+  rpcServer.start();
 }
 
 void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
