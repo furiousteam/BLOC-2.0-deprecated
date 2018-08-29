@@ -22,18 +22,22 @@
 
 
 #include <System/EventLock.h>
+#include "CryptoNoteConfig.h"
 #include "Serialization/JsonInputValueSerializer.h"
 #include "Serialization/JsonOutputStreamSerializer.h"
 #include "IWalletLegacy.h"
 #include "Rpc/JsonRpc.h"
 #include "CryptoNoteCore/TransactionExtra.h"
 #include "Common/StringTools.h"
+#include "Wallet/WalletRpcServerErrorCodes.h"
+#include "Wallet/WalletErrors.h"
 
 namespace SimpleWalletRPC {
 
-SimpleWalletRPCServer::SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent,  CryptoNote::WalletGreen& wallet, Config& cfg, Logging::ILogger& loggerGroup) 
+SimpleWalletRPCServer::SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent,  CryptoNote::WalletGreen& wallet, CryptoNote::INode &node, Config& cfg, Logging::ILogger& loggerGroup) 
   : JsonRpcServer(sys, stopEvent, loggerGroup)
   , wallet(wallet)
+  , node(node)
   , cfg(cfg)
   , logger(loggerGroup, "SimpleWalletRPCServer")
   , readyEvent(sys)
@@ -126,10 +130,64 @@ std::error_code SimpleWalletRPCServer::handleTransfer(const Transfer::Request& r
 }
 
 std::error_code SimpleWalletRPCServer::handleStore(const Store::Request& request, Store::Response& response) {
+  try {
+	System::EventLock lk(readyEvent);
+	wallet.save();
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while doing reset: " << x.what();
+    return x.code();
+  }
+
   return std::error_code();
 }
 
 std::error_code SimpleWalletRPCServer::handleGetPayments(const GetPayments::Request& request, GetPayments::Response& response) {
+  using namespace CryptoNote;
+
+  Crypto::Hash expectedPaymentId;
+  BinaryArray payment_id_blob;
+
+  if (!Common::fromHex(request.payment_id, payment_id_blob)) {
+    throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_PAYMENT_ID, "Payment ID has invald format");
+  }
+
+  if (sizeof(expectedPaymentId) != payment_id_blob.size()) {
+    throw JsonRpc::JsonRpcError(WALLET_RPC_ERROR_CODE_WRONG_PAYMENT_ID, "Payment ID has invalid size");
+  }
+
+  try {
+	System::EventLock lk(readyEvent);
+	expectedPaymentId = *reinterpret_cast<const Crypto::Hash*>(payment_id_blob.data());
+	size_t transactionsCount = wallet.getTransactionCount();
+	for (size_t trantransactionNumber = 0; trantransactionNumber < transactionsCount; ++trantransactionNumber) {
+		WalletTransaction txInfo = wallet.getTransaction(trantransactionNumber);
+		if (txInfo.state != WalletTransactionState::SUCCEEDED || txInfo.blockHeight == WALLET_UNCONFIRMED_TRANSACTION_HEIGHT) {
+			continue;
+		}
+
+		if (txInfo.totalAmount < 0) continue;
+
+		std::vector<uint8_t> extraVec;
+		extraVec.reserve(txInfo.extra.size());
+		std::for_each(txInfo.extra.begin(), txInfo.extra.end(), [&extraVec](const char el) { extraVec.push_back(el); });
+
+		Crypto::Hash paymentId;
+		if (getPaymentIdFromTxExtra(extraVec, paymentId) && paymentId == expectedPaymentId) {
+			payment_details rpc_payment;
+			rpc_payment.tx_hash = Common::podToHex(txInfo.hash);
+			rpc_payment.amount = txInfo.totalAmount;
+			rpc_payment.block_height = txInfo.blockHeight;
+			rpc_payment.unlock_time = txInfo.unlockTime;
+			response.payments.push_back(rpc_payment);
+		}
+	}
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while doing get_payments: " << x.what();
+    return x.code();
+  }
+
   return std::error_code();
 }
 
@@ -144,7 +202,7 @@ std::error_code SimpleWalletRPCServer::handleGetTransfers(const GetTransfers::Re
 	for (size_t trantransactionNumber = 0; trantransactionNumber < transactionsCount; ++trantransactionNumber) {
 		WalletTransaction txInfo = wallet.getTransaction(trantransactionNumber);
 		if (txInfo.state != WalletTransactionState::SUCCEEDED || txInfo.blockHeight == WALLET_UNCONFIRMED_TRANSACTION_HEIGHT) {
-		continue;
+			continue;
 		}
 
 		WalletTransfer tr = wallet.getTransactionTransfer(trantransactionNumber, 0);
@@ -179,14 +237,74 @@ std::error_code SimpleWalletRPCServer::handleGetTransfers(const GetTransfers::Re
 }
 
 std::error_code SimpleWalletRPCServer::handleGetHeight(const GetHeight::Request& request, GetHeight::Response& response) {
+  try {
+	System::EventLock lk(readyEvent);
+	response.height = node.getLastLocalBlockHeight();
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while doing get_height: " << x.what();
+    return x.code();
+  }
+
   return std::error_code();
 }
 
 std::error_code SimpleWalletRPCServer::handleReset(const Reset::Request& request, Reset::Response& response) {
+  try {
+	System::EventLock lk(readyEvent);
+	wallet.resetPendingTransactions();
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while doing reset: " << x.what();
+    return x.code();
+  }
+
   return std::error_code();
 }
 
 std::error_code SimpleWalletRPCServer::handleOptimize(const Optimize::Request& request, Optimize::Response& response) {
+  using namespace CryptoNote;
+  
+  try {
+    System::EventLock lk(readyEvent);
+
+    uint64_t threshold = wallet.getActualBalance();
+    uint64_t bestThreshold = wallet.getActualBalance();
+    size_t optimizable = 0;
+
+    /* Find the best threshold by starting at threshold and decreasing by
+       half till we get to the minimum amount, storing the threshold that
+       gave us the most amount of optimizable amounts */
+    while (threshold > CryptoNote::parameters::MINIMUM_FEE)
+    {
+        CryptoNote::IFusionManager::EstimateResult r = wallet.estimate(threshold);
+
+        if (r.fusionReadyCount > optimizable)
+        {
+            optimizable = r.fusionReadyCount;
+            bestThreshold = threshold;
+        }
+
+        threshold /= 2;
+    }
+
+    /* Can't optimize */
+    if (optimizable == 0)
+    {
+        return make_error_code(CryptoNote::error::OBJECT_NOT_FOUND);
+    }
+
+    size_t transactionId = wallet.createFusionTransaction(bestThreshold, CryptoNote::parameters::DEFAULT_MIXIN, { }, request.address);
+    response.transactionHash = Common::podToHex(wallet.getTransaction(transactionId).hash);
+
+    logger(Logging::INFO) << "Fusion transaction " << response.transactionHash << " has been sent";
+  } catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while optimizing wallet: " << x.what();
+    return x.code();
+  } catch (std::exception& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while optimizing wallet: " << x.what();
+    return make_error_code(CryptoNote::error::INTERNAL_WALLET_ERROR);
+  }
   return std::error_code();
 }
 }

@@ -31,7 +31,7 @@ namespace SimpleWalletRPC {
 
 class SimpleWalletRPCServer : public CryptoNote::JsonRpcServer {
 public:
-  SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent, CryptoNote::WalletGreen& wallet, Config& cfg, Logging::ILogger& loggerGroup);
+  SimpleWalletRPCServer(System::Dispatcher& sys, System::Event& stopEvent, CryptoNote::WalletGreen& wallet, CryptoNote::INode &node, Config& cfg, Logging::ILogger& loggerGroup);
   SimpleWalletRPCServer(const SimpleWalletRPCServer&) = delete;
 
   inline void start() { CryptoNote::JsonRpcServer::start(cfg.rpcHost, cfg.rpcPort); }
@@ -41,6 +41,7 @@ protected:
 
 private:
   CryptoNote::WalletGreen& wallet;
+  CryptoNote::INode &node;
   Config& cfg;
   Logging::LoggerRef logger;
   System::Event readyEvent;
