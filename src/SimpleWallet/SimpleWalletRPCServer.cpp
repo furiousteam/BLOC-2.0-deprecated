@@ -24,8 +24,10 @@
 #include <System/EventLock.h>
 #include "Serialization/JsonInputValueSerializer.h"
 #include "Serialization/JsonOutputStreamSerializer.h"
-
+#include "IWalletLegacy.h"
 #include "Rpc/JsonRpc.h"
+#include "CryptoNoteCore/TransactionExtra.h"
+#include "Common/StringTools.h"
 
 namespace SimpleWalletRPC {
 
@@ -132,6 +134,47 @@ std::error_code SimpleWalletRPCServer::handleGetPayments(const GetPayments::Requ
 }
 
 std::error_code SimpleWalletRPCServer::handleGetTransfers(const GetTransfers::Request& request, GetTransfers::Response& response) {
+  using namespace CryptoNote;
+
+  response.transfers.clear();
+  try {
+	System::EventLock lk(readyEvent);
+	logger(Logging::DEBUGGING) << "get_transfers call";
+	size_t transactionsCount = wallet.getTransactionCount();
+	for (size_t trantransactionNumber = 0; trantransactionNumber < transactionsCount; ++trantransactionNumber) {
+		WalletTransaction txInfo = wallet.getTransaction(trantransactionNumber);
+		if (txInfo.state != WalletTransactionState::SUCCEEDED || txInfo.blockHeight == WALLET_UNCONFIRMED_TRANSACTION_HEIGHT) {
+		continue;
+		}
+
+		WalletTransfer tr = wallet.getTransactionTransfer(trantransactionNumber, 0);
+
+		transfer_details transfer;
+		transfer.time = txInfo.timestamp;
+		transfer.output = txInfo.totalAmount < 0;
+		transfer.transactionHash = Common::podToHex(txInfo.hash);
+		transfer.amount = std::abs(txInfo.totalAmount);
+		transfer.fee = txInfo.fee;
+		transfer.address = tr.address;
+		transfer.blockIndex = txInfo.blockHeight;
+		transfer.unlockTime = txInfo.unlockTime;
+		transfer.paymentId = "";
+
+		std::vector<uint8_t> extraVec;
+		extraVec.reserve(txInfo.extra.size());
+		std::for_each(txInfo.extra.begin(), txInfo.extra.end(), [&extraVec](const char el) { extraVec.push_back(el); });
+
+		Crypto::Hash paymentId;
+		transfer.paymentId = (getPaymentIdFromTxExtra(extraVec, paymentId) && paymentId != NULL_HASH ? Common::podToHex(paymentId) : "");
+
+		response.transfers.push_back(transfer);
+	}
+  }
+  catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while doing get_transfers: " << x.what();
+    return x.code();
+  }
+  
   return std::error_code();
 }
 
