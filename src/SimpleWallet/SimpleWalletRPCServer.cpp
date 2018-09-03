@@ -126,6 +126,42 @@ std::error_code SimpleWalletRPCServer::handleGetBalance(const GetBalance::Reques
 }
 
 std::error_code SimpleWalletRPCServer::handleTransfer(const Transfer::Request& request, Transfer::Response& response) {
+  using namespace CryptoNote;
+  
+  TransactionParameters txparam;
+  for (const transfer_destination& td : request.destinations) {
+    WalletOrder ord;
+    ord.address = td.address;
+    ord.amount = td.amount;
+    txparam.destinations.push_back(ord);
+  }
+  
+  txparam.unlockTimestamp = request.unlock_time;
+  txparam.fee = request.fee;
+  txparam.mixIn = request.mixin;
+
+  try {
+    if (!request.payment_id.empty()) {
+		std::vector<uint8_t> extraVector;
+		if (!createTxExtraWithPaymentId(request.payment_id, extraVector))
+			throw std::system_error(make_error_code(error::BAD_PAYMENT_ID));
+		std::copy(extraVector.begin(), extraVector.end(), std::back_inserter(txparam.extra));
+    }
+
+    size_t txid = wallet.transfer(txparam);
+    if (txid == WALLET_INVALID_TRANSACTION_ID) {
+      throw std::runtime_error("Couldn't send transaction");
+    }
+
+    response.tx_hash = Common::podToHex(wallet.getTransaction(txid).hash);
+  } catch (std::system_error& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while sending transaction: " << x.what();
+    return x.code();
+  } catch (std::exception& x) {
+    logger(Logging::WARNING, Logging::BRIGHT_YELLOW) << "Error while sending transaction: " << x.what();
+    return make_error_code(error::INTERNAL_WALLET_ERROR);
+  }
+
   return std::error_code();
 }
 
