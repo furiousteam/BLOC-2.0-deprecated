@@ -39,6 +39,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <SimpleWallet/Sync.h>
 #include <SimpleWallet/Transfer.h>
 #include <SimpleWallet/Tools.h>
+#include <SimpleWallet/SimpleWalletRPCServer.h>
+#include <PaymentGateService/PaymentServiceConfiguration.h>
+#include <Logging/ConsoleLogger.h>
 
 #ifdef _WIN32
 /* Prevents windows.h redefining min/max which breaks compilation */
@@ -125,6 +128,16 @@ int main(int argc, char **argv)
 
   /* Run the interactive wallet interface */
   run(wallet, *node, config);
+}
+
+void rpc_thread(Config &config, CryptoNote::WalletGreen &wallet, CryptoNote::INode &node)
+{
+  System::Dispatcher dispatcher;
+  System::Event stopEvent(dispatcher);
+  Logging::ConsoleLogger logger;
+  
+  SimpleWalletRPC::SimpleWalletRPCServer rpcServer(dispatcher, stopEvent, wallet, node, config, logger);
+  rpcServer.start();
 }
 
 void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
@@ -246,6 +259,8 @@ void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
   }
 
   welcomeMsg();
+
+  std::thread thd(std::bind(rpc_thread, std::ref(config), std::ref(wallet), std::ref(node)));
 
   inputLoop(walletInfo, node);
 
