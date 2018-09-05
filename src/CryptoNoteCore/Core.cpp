@@ -572,7 +572,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   std::vector<CachedTransaction> transactions;
   uint64_t cumulativeSize = 0;
   if (!extractTransactions(rawBlock.transactions, transactions, cumulativeSize)) {
-    logger(Logging::WARNING) << "Couldn't deserialize raw block transactions in block " << cachedBlock.getBlockHash();
+    logger(Logging::DEBUGGING) << "Couldn't deserialize raw block transactions in block " << cachedBlock.getBlockHash();
     return error::AddBlockErrorCode::DESERIALIZATION_FAILED;
   }
 
@@ -586,14 +586,14 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
   bool addOnTop = cache->getTopBlockIndex() == previousBlockIndex;
   auto maxBlockCumulativeSize = currency.maxBlockCumulativeSize(previousBlockIndex + 1);
   if (cumulativeBlockSize > maxBlockCumulativeSize) {
-    logger(Logging::WARNING) << "Block " << cachedBlock.getBlockHash() << " has too big cumulative size";
+    logger(Logging::DEBUGGING) << "Block " << cachedBlock.getBlockHash() << " has too big cumulative size";
     return error::BlockValidationError::CUMULATIVE_BLOCK_SIZE_TOO_BIG;
   }
 
   uint64_t minerReward = 0;
   auto blockValidationResult = validateBlock(cachedBlock, cache, minerReward);
   if (blockValidationResult) {
-    logger(Logging::WARNING) << "Failed to validate block " << cachedBlock.getBlockHash() << ": " << blockValidationResult.message();
+    logger(Logging::DEBUGGING) << "Failed to validate block " << cachedBlock.getBlockHash() << ": " << blockValidationResult.message();
     return blockValidationResult;
   }
 
@@ -623,12 +623,12 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
   if (!currency.getBlockReward(cachedBlock.getBlock().majorVersion, blocksSizeMedian,
                                cumulativeBlockSize, alreadyGeneratedCoins, cumulativeFee, reward, emissionChange)) {
-    logger(Logging::WARNING) << "Block " << cachedBlock.getBlockHash() << " has too big cumulative size";
+    logger(Logging::DEBUGGING) << "Block " << cachedBlock.getBlockHash() << " has too big cumulative size";
     return error::BlockValidationError::CUMULATIVE_BLOCK_SIZE_TOO_BIG;
   }
 
   if (minerReward != reward) {
-    logger(Logging::WARNING) << "Block reward mismatch for block " << (previousBlockIndex + 1) << "  " << cachedBlock.getBlockHash()
+    logger(Logging::DEBUGGING) << "Block reward mismatch for block " << (previousBlockIndex + 1) << "  " << cachedBlock.getBlockHash()
                              << ". Expected reward: " << reward << ", got reward: " << minerReward;
     return error::BlockValidationError::BLOCK_REWARD_MISMATCH;
   }
@@ -639,7 +639,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
       return error::BlockValidationError::CHECKPOINT_BLOCK_HASH_MISMATCH;
     }
   } else if (!currency.checkProofOfWork(cryptoContext, cachedBlock, currentDifficulty)) {
-    logger(Logging::WARNING) << "Proof of work too weak for block " << cachedBlock.getBlockHash();
+    logger(Logging::DEBUGGING) << "Proof of work too weak for block " << cachedBlock.getBlockHash();
     return error::BlockValidationError::PROOF_OF_WORK_TOO_WEAK;
   }
 
@@ -956,14 +956,14 @@ bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction,
   uint64_t fee;
 
   if (auto validationResult = validateTransaction(cachedTransaction, validatorState, chainsLeaves[0], fee, getTopBlockIndex())) {
-    logger(Logging::WARNING) << "Transaction " << cachedTransaction.getTransactionHash()
+    logger(Logging::DEBUGGING) << "Transaction " << cachedTransaction.getTransactionHash()
       << " is not valid. Reason: " << validationResult.message();
     return false;
   }
 
   auto maxTransactionSize = getMaximumTransactionAllowedSize(blockMedianSize, currency);
   if (cachedTransaction.getTransactionBinaryArray().size() > maxTransactionSize) {
-    logger(Logging::WARNING) << "Transaction " << cachedTransaction.getTransactionHash()
+    logger(Logging::DEBUGGING) << "Transaction " << cachedTransaction.getTransactionHash()
       << " is not valid. Reason: transaction is too big (" << cachedTransaction.getTransactionBinaryArray().size()
       << "). Maximum allowed size is " << maxTransactionSize;
     return false;
@@ -971,7 +971,7 @@ bool Core::isTransactionValidForPool(const CachedTransaction& cachedTransaction,
 
   bool isFusion = fee == 0 && currency.isFusionTransaction(cachedTransaction.getTransaction(), cachedTransaction.getTransactionBinaryArray().size());
   if (!isFusion && fee < currency.minimumFee()) {
-    logger(Logging::WARNING) << "Transaction " << cachedTransaction.getTransactionHash()
+    logger(Logging::DEBUGGING) << "Transaction " << cachedTransaction.getTransactionHash()
       << " is not valid. Reason: fee is too small and it's not a fusion transaction";
     return false;
   }
