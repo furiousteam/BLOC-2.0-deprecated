@@ -52,6 +52,10 @@ const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V3         = 3 * DIFFICULTY_TA
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V3          = 11;
 
+const size_t  DIFFICULTY_BLOCKS_V2        = 17;
+const size_t  DIFFICULTY_CUT_V2          = 6;
+const size_t  DIFFICULTY_WINDOW_V2        = DIFFICULTY_BLOCKS_V2 + DIFFICULTY_CUT_V2 * 2;
+
 // MONEY_SUPPLY - total number coins to be generated
 const uint64_t MONEY_SUPPLY				                           = UINT64_C(500000000000);
 const uint32_t ZAWY_DIFFICULTY_BLOCK_INDEX                   = 40500;

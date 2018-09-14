@@ -786,8 +786,10 @@ CurrencyBuilder::CurrencyBuilder(Logging::ILogger& log) : m_currency(log) {
 
   difficultyTarget(parameters::DIFFICULTY_TARGET);
   difficultyWindow(parameters::DIFFICULTY_WINDOW);
+  difficultyWindowV2(parameters::DIFFICULTY_WINDOW_V2);
   difficultyLag(parameters::DIFFICULTY_LAG);
   difficultyCut(parameters::DIFFICULTY_CUT);
+  difficultyCutV2(parameters::DIFFICULTY_CUT_V2);
 
   maxBlockSizeInitial(parameters::MAX_BLOCK_SIZE_INITIAL);
   maxBlockSizeAllowedEveryNBlock(parameters::MAX_BLOCK_SIZE_ALLOWED_EVERY_N_BLOCK);
@@ -845,6 +847,14 @@ CurrencyBuilder& CurrencyBuilder::difficultyWindow(size_t val) {
     throw std::invalid_argument("val at difficultyWindow()");
   }
   m_currency.m_difficultyWindow = val;
+  return *this;
+}
+
+CurrencyBuilder& CurrencyBuilder::difficultyWindowV2(size_t val) {
+  if (val < 2) {
+    throw std::invalid_argument("val at difficultyWindow()");
+  }
+  m_currency.m_difficultyWindow_v2 = val;
   return *this;
 }
 
