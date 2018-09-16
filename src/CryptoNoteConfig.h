@@ -52,9 +52,9 @@ const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V3         = 3 * DIFFICULTY_TA
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW             = 60;
 const size_t   BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V3          = 11;
 
-const size_t  DIFFICULTY_BLOCKS_V2        = 17;
-const size_t  DIFFICULTY_CUT_V2          = 6;
-const size_t  DIFFICULTY_WINDOW_V2        = DIFFICULTY_BLOCKS_V2 + DIFFICULTY_CUT_V2 * 2;
+const size_t  DIFFICULTY_BLOCKS_V2        = 17;
+const size_t  DIFFICULTY_CUT_V2          = 6;
+const size_t  DIFFICULTY_WINDOW_V2        = DIFFICULTY_BLOCKS_V2 + DIFFICULTY_CUT_V2 * 2;
 
 // MONEY_SUPPLY - total number coins to be generated
 const uint64_t MONEY_SUPPLY				                           = UINT64_C(500000000000);
@@ -192,7 +192,8 @@ const CheckpointData CHECKPOINTS[] = {
 	{40600, "0fd41c01f0a76aa45a3ccb62c2fc5ab325fa57d4c25ddfbe168cd11e7424aa78"},
 	{45000, "014d3a57cfe8c55b198abc96464598261ce9a658a471c0bf2c864543056eed2d"},
 	{50000, "49ed4e36995ff484963e32fe360cea1ba504d802bbe00f9fe2ff5266f70a9c2b"},
-	{60000, "7f398b91508a52f821b23a8c614b39b29c0c499469843c7c43b793dcc10615ca"}};
+	{60000, "7f398b91508a52f821b23a8c614b39b29c0c499469843c7c43b793dcc10615ca"},
+	{74243, "a27e3ab59adfc42eeb8ee22e16736b092896fb4a25144ce439d35b5d5cbfd70a"}};
 
 }
 
