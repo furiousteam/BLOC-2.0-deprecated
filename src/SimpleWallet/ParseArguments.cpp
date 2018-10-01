@@ -215,9 +215,7 @@ void helpMessage()
 {
     versionMessage();
 
-    std::cout << std::endl << "simplewallet [--help] [--version] "
-              << "[--remote-daemon <url>] [--wallet-file <file>] "
-              << "[--password <pass>] [--rpc-bind-ip <ipaddress>] [--rpc-bind-port <RPC Port>] [--rpc-password <RPC Password>]"
+    std::cout << std::endl <<     std::cout << std::endl << "usage: simplewallet [--wallet-file=<file>] [--remote-daemon=<host>:<port>] [<COMMAND>]"
               << std::endl << std::endl
               << "Commands:" << std::endl << "  -h, " << std::left
               << std::setw(25) << "--help"
