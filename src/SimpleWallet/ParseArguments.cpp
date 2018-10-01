@@ -215,9 +215,9 @@ void helpMessage()
 {
     versionMessage();
 
-    std::cout << std::endl << "simplewallet [--version] [--help] "
+    std::cout << std::endl << "simplewallet [--help] [--version] "
               << "[--remote-daemon <url>] [--wallet-file <file>] "
-              << "[--password <pass>]"
+              << "[--password <pass>] [--rpc-bind-ip <ipaddress>] [--rpc-bind-port <RPC Port>] [--rpc-password <RPC Password>]"
               << std::endl << std::endl
               << "Commands:" << std::endl << "  -h, " << std::left
               << std::setw(25) << "--help"
@@ -226,10 +226,18 @@ void helpMessage()
               << "--version" << "Display the version information and exit"
               << std::endl << "      " << std::left << std::setw(25)
               << "--remote-daemon <url>" << "Connect to the remote daemon at "
-              << "<url>"
+              << "<url:port> using RPC Port"
               << std::endl << "      " << std::left << std::setw(25)
               << "--wallet-file <file>" << "Open the wallet <file>"
               << std::endl << "      " << std::left << std::setw(25)
-              << "--password <pass>" << "Use the password <pass> to open the "
-              << "wallet" << std::endl;
+              << "--password <pass>" << "Use the password <pass> to open the wallet"
+              << std::endl << "      " << std::left << std::setw(25)
+              << "--legacy-security" << "Enable legacy mode (no password for RPC). WARNING: INSECURE. USE ONLY AS A LAST RESORT"
+              << std::endl << "      " << std::left << std::setw(25)
+              << "--rpc-bind-ip" << "Specify ip to bind rpc server"
+              << std::endl << "      " << std::left << std::setw(25)
+              << "--rpc-bind-port" << "Starts wallet as rpc server for wallet operations, sets bind port for server"
+              << std::endl << "      " << std::left << std::setw(25)
+              << "--rpc-password" << "Specify the RPC password to connect to the wallet using RPC calls"
+              << std::endl << std::endl;
 }
