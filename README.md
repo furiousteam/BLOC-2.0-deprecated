@@ -163,7 +163,7 @@ The complete API reference is available here:
 
 `simplewallet` is a simple CLI wallet for BLOC.
 
-![simplewallet](https://user-images.githubusercontent.com/1941393/40309016-5c4ab64e-5d08-11e8-9115-1bcccc0d0e87.png)
+![simplewallet](https://bloc.money/files/github/simple_wallet_2.0.1.png)
 
 ```
 Usage: simplewallet [--wallet-file=<file>|--generate-new-wallet=<file>] [--daemon-address=<host>:<port>] [<COMMAND>]
@@ -172,10 +172,19 @@ General options:
   --version                       Output version information
 
 Wallet options:
-  --wallet-file arg               Use wallet <arg>
+  --wallet-file arg               Use specified wallet file
+  --password arg                  Wallet password to open the wallet
+  --remote-daemon arg             Connect to the remote daemon at <url:port> using RPC Port
+  --rpc-bind-ip arg (=127.0.0.1)  Specify ip to bind rpc server
+  --rpc-bind-port arg             Starts wallet as rpc server for wallet
+                                  operations, sets bind port for server
+  --rpc-password arg              Specify the password to access the rpc
+                                  server.
+  --rpc-legacy-security           Enable legacy mode (no password for RPC).
+                                  WARNING: INSECURE. USE ONLY AS A LAST RESORT.
+ 
+ Depreciated:
   --generate-new-wallet arg       Generate new wallet and save it to <arg>
-  --password arg                  Wallet password
-  --daemon-address arg            Use daemon instance at <host>:<port>
   --daemon-host arg               Use daemon instance at host <arg> instead of
                                   localhost
   --daemon-port arg (=0)          Use daemon instance at port <arg> instead of
@@ -184,30 +193,29 @@ Wallet options:
   --set_log arg
   --testnet                       Used to deploy test nets. The daemon must be
                                   launched with --testnet flag
-  --rpc-bind-ip arg (=127.0.0.1)  Specify ip to bind rpc server
-  --rpc-bind-port arg             Starts wallet as rpc server for wallet
-                                  operations, sets bind port for server
-  --rpc-password arg              Specify the password to access the rpc
-                                  server.
-  --rpc-legacy-security           Enable legacy mode (no password for RPC).
-                                  WARNING: INSECURE. USE ONLY AS A LAST RESORT.
 
 Commands:
-  address              Show current wallet public address
-  balance              Show current wallet balance
-  bc_height            Show blockchain height
-  exit                 Close wallet
   help                 Show this help
-  incoming_transfers   Show incoming transfers
-  keys                 Show wallet private keys
-  list_transfers       Show all known transfers
-  payments             payments <payment_id_1> [<payment_id_2> ... <payment_id_N>] - Show payments <payment_id_1>, ... <payment_id_N>
   reset                Discard cache data and start synchronizing from the start
+  bc_height            Show blockchain height
+  balance              Show current wallet balance
+  export_keys          Show wallet private keys
+  address              Show current wallet public address
+  exit                 Close wallet
   save                 Save wallet synchronized data
+  incoming_transfers   Show incoming transfers
+  outgoing_transfers   Show outgoing transfers
+  list_transfers       Show all known transfers
+  quick_optimize      Quickly optimize your wallet to send large amounts
+  full_optimize       Fully optimize your wallet to send large amounts
+  transfer             transfer <mixin_count> <addr_1> <amount_1> [<addr_2> <amount_2> ... <addr_N> <amount_N>] [-p payment_id] [-f fee] - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. <mixin_count> is the number of transactions yours is indistinguishable from (from 0 to maximum available)
+  
+   Depreciated:
+  payments             payments <payment_id_1> [<payment_id_2> ... <payment_id_N>] - Show payments <payment_id_1>, ... <payment_id_N>
   set_log              set_log <level> - Change current log level, <level> is a number 0-4
   start_mining         start_mining [<number_of_threads>] - Start mining in daemon
   stop_mining          Stop mining in daemon
-  transfer             transfer <mixin_count> <addr_1> <amount_1> [<addr_2> <amount_2> ... <addr_N> <amount_N>] [-p payment_id] [-f fee] - Transfer <amount_1>,... <amount_N> to <address_1>,... <address_N>, respectively. <mixin_count> is the number of transactions yours is indistinguishable from (from 0 to maximum available)
+  
 ```
 
 You can also specify various settings for the RPC interface:
