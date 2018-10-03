@@ -46,10 +46,10 @@ To clone and build the BLOC core, you'll need Git installed on your computer. Fr
 
 ```
 # Clone this repository
-$ git clone https://github.com/furiousteam/blockchain-coin.git
+$ git clone https://github.com/furiousteam/BLOC.git
 
 # Go into the repository
-$ cd blockchain-coin
+$ cd BLOC
 ```
 
 ### macOS instructions
