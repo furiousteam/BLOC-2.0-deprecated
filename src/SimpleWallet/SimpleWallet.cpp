@@ -72,8 +72,10 @@ int main(int argc, char **argv)
   Logging::LoggerManager logManager;
   Logging::LoggerRef logger(logManager, "simplewallet");
 
+  logManager.setMaxLevel(static_cast<Logging::Level>(config.log_level));
+
   /* Currency contains our coin parameters, such as decimal places, supply */
-  CryptoNote::Currency currency = CryptoNote::CurrencyBuilder(logManager).currency();
+  CryptoNote::Currency currency = CryptoNote::CurrencyBuilder(logManager).testnet(config.testnet).currency();
 
   System::Dispatcher localDispatcher;
   System::Dispatcher *dispatcher = &localDispatcher;
@@ -272,7 +274,7 @@ Maybe<std::shared_ptr<WalletInfo>> handleAction(CryptoNote::WalletGreen &wallet,
 {
   if (action == Generate)
   {
-    return Just<std::shared_ptr<WalletInfo>>(generateWallet(wallet));
+    return Just<std::shared_ptr<WalletInfo>>(generateWallet(wallet, config));
   }
   else if (action == Open)
   {
@@ -294,9 +296,9 @@ Maybe<std::shared_ptr<WalletInfo>> handleAction(CryptoNote::WalletGreen &wallet,
 
 Action getAction(Config &config)
 {
-  if (config.walletGiven || config.passGiven)
+  if (config.walletGiven)
   {
-    return Open;
+    return config.walletCreate ? Generate : Open;
   }
 
   while (true)

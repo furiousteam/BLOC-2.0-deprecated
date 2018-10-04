@@ -19,6 +19,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <SimpleWallet/ParseArguments.h>
 ////////////////////////////////////////
 
+#include <Logging/LoggerManager.h>
+
 #include <algorithm>
 
 #include "CryptoNoteConfig.h"
@@ -66,6 +68,9 @@ Config parseArguments(int argc, char **argv)
     config.rpcPassword = "";
     config.rpcPort = 2053;
     config.legacySecurity = false;
+    config.testnet = false;
+    config.log_level = Logging::TRACE;
+	config.walletCreate = false;
 
     if (cmdOptionExists(argv, argv+argc, "-h")
      || cmdOptionExists(argv, argv+argc, "--help"))
@@ -83,8 +88,40 @@ Config parseArguments(int argc, char **argv)
         return config;
     }
 
+    if (cmdOptionExists(argv, argv+argc, "--testnet"))
+    {
+        config.testnet = true;
+    }
+
+    if (cmdOptionExists(argv, argv+argc, "--generate-new-wallet"))
+    {
+        char *wallet = getCmdOption(argv, argv+argc, "--generate-new-wallet");
+
+        if (!wallet)
+        {
+            std::cout << "--generate-new-wallet was specified, but no wallet file "
+                      << "was given!" << std::endl;
+
+            helpMessage();
+            config.exit = true;
+            return config;
+        }
+
+        config.walletFile = std::string(wallet);
+        config.walletGiven = true;
+		config.walletCreate = true;
+    }
+
     if (cmdOptionExists(argv, argv+argc, "--wallet-file"))
     {
+		if(config.walletCreate)
+		{
+            std::cout << "--generate-new-wallet was specified, you cannot do both at the same time!" << std::endl;
+            helpMessage();
+            config.exit = true;
+            return config;
+        }
+
         char *wallet = getCmdOption(argv, argv+argc, "--wallet-file");
 
         if (!wallet)
@@ -188,6 +225,26 @@ Config parseArguments(int argc, char **argv)
             config.exit = true;
         }
     }
+    
+	if (cmdOptionExists(argv, argv+argc, "--set_log")) {
+        char *level = getCmdOption(argv, argv + argc, "--set_log");
+
+        try
+        {
+            config.log_level = std::stoi(level);
+        }
+        catch (const std::invalid_argument &)
+        {
+            std::cout << "Failed to parse log level! Not an integer?" << std::endl;
+            config.exit = true;
+        }
+        
+        if(config.log_level > Logging::TRACE || config.log_level < 0)
+		{
+            std::cout << "Log level is not 0 to " << Logging::TRACE << std::endl;
+            config.exit = true;
+		}
+    }
 
     if (cmdOptionExists(argv, argv+argc, "--rpc-password")) {
         char *rpcPassword = getCmdOption(argv, argv + argc, "--rpc-password");
@@ -220,24 +277,30 @@ void helpMessage()
               << "[--password <pass>] [--rpc-bind-ip <ipaddress>] [--rpc-bind-port <RPC Port>] [--rpc-password <RPC Password>]"
               << std::endl << std::endl
               << "Commands:" << std::endl << "  -h, " << std::left
-              << std::setw(25) << "--help"
+              << std::setw(30) << "--help"
               << "Display this help message and exit"
-              << std::endl << "  -v, " << std::left << std::setw(25)
+              << std::endl << "  -v, " << std::left << std::setw(30)
               << "--version" << "Display the version information and exit"
-              << std::endl << "      " << std::left << std::setw(25)
+              << std::endl << "      " << std::left << std::setw(30)
               << "--remote-daemon <url>" << "Connect to the remote daemon at "
               << "<url:port> using RPC Port"
-              << std::endl << "      " << std::left << std::setw(25)
+              << std::endl << "      " << std::left << std::setw(30)
               << "--wallet-file <file>" << "Open the wallet <file>"
-              << std::endl << "      " << std::left << std::setw(25)
+              << std::endl << "      " << std::left << std::setw(30)
+              << "--generate-new-wallet <file>" << "Create new wallet <file>"
+              << std::endl << "      " << std::left << std::setw(30)
               << "--password <pass>" << "Use the password <pass> to open the wallet"
-              << std::endl << "      " << std::left << std::setw(25)
+              << std::endl << "      " << std::left << std::setw(30)
               << "--legacy-security" << "Enable legacy mode (no password for RPC). WARNING: INSECURE. USE ONLY AS A LAST RESORT"
-              << std::endl << "      " << std::left << std::setw(25)
+              << std::endl << "      " << std::left << std::setw(30)
               << "--rpc-bind-ip" << "Specify ip to bind rpc server"
-              << std::endl << "      " << std::left << std::setw(25)
+              << std::endl << "      " << std::left << std::setw(30)
               << "--rpc-bind-port" << "Starts wallet as rpc server for wallet operations, sets bind port for server"
-              << std::endl << "      " << std::left << std::setw(25)
+              << std::endl << "      " << std::left << std::setw(30)
               << "--rpc-password" << "Specify the RPC password to connect to the wallet using RPC calls"
+              << std::endl << "      " << std::left << std::setw(30)
+              << "--set_log" << "Change current log level, <level> is a number 0-4"
+              << std::endl << "      " << std::left << std::setw(30)
+              << "--testnet" << "Used to deploy test nets. The daemon must be launched with --testnet flag"
               << std::endl << std::endl;
 }
