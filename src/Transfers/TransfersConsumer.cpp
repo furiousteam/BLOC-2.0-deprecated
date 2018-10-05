@@ -97,8 +97,6 @@ void findMyOutputs(
       uint64_t amount;
       KeyOutput out;
       tx.getOutput(idx, out, amount);
-      checkOutputKey(derivation, out.key, keyIndex, idx, spendKeys, outputs);
-      ++keyIndex;
 
       if (public_keys_seen.find(out.key) != public_keys_seen.end())
 	  {
