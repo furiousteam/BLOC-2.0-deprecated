@@ -270,6 +270,7 @@ void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
   inputLoop(walletInfo, node);
 
   shutdown(walletInfo->wallet, node, alreadyShuttingDown);
+  thd.detach();
 }
 
 Maybe<std::shared_ptr<WalletInfo>> handleAction(CryptoNote::WalletGreen &wallet,
