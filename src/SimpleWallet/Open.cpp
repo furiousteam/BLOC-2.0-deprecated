@@ -96,9 +96,9 @@ std::shared_ptr<WalletInfo> importFromKeys(CryptoNote::WalletGreen &wallet,
                                         walletAddress, false, wallet);
 }
 
-std::shared_ptr<WalletInfo> generateWallet(CryptoNote::WalletGreen &wallet)
+std::shared_ptr<WalletInfo> generateWallet(CryptoNote::WalletGreen &wallet, Config &config)
 {
-    std::string walletFileName = getNewWalletFileName();
+    std::string walletFileName = getNewWalletFileName(config.walletGiven ? config.walletFile : "");
     std::string walletPass = getWalletPassword(true);
 
     
@@ -385,14 +385,23 @@ std::string getExistingWalletFileName(Config &config)
     }
 }
 
-std::string getNewWalletFileName()
+std::string getNewWalletFileName(std::string defaultName)
 {
+    bool tryDefault = !defaultName.empty();
     std::string walletName;
 
     while (true)
     {
-        std::cout << "What would you like to call your new wallet?: ";
-        std::getline(std::cin, walletName);
+		if(tryDefault)
+		{
+			walletName = defaultName;
+			tryDefault = false;
+		}
+		else
+		{
+			std::cout << "What would you like to call your new wallet?: ";
+			std::getline(std::cin, walletName);
+		}
 
         std::string walletFileName = walletName + ".wallet";
 

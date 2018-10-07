@@ -25,6 +25,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include <SimpleWallet/Tools.h>
 #include <SimpleWallet/Types.h>
+#include <CryptoNoteCore/TransactionExtra.h>
 
 CryptoNote::BlockDetails getBlock(uint32_t blockHeight,
                                   CryptoNote::INode &node)
@@ -130,16 +131,41 @@ void printIncomingTransfer(CryptoNote::WalletTransaction t,
     std::cout << std::endl;
 }
 
-void listTransfers(bool incoming, bool outgoing, 
+bool txHasPaymentId(const std::string& txExtra, const std::vector<Crypto::Hash>& expPaymentIds)
+{
+   std::vector<uint8_t> extraVec;
+   extraVec.reserve(txExtra.size());
+   std::for_each(txExtra.begin(), txExtra.end(), [&extraVec](const char el) { extraVec.push_back(el); });
+   
+   Crypto::Hash paymentId;
+   if(!CryptoNote::getPaymentIdFromTxExtra(extraVec, paymentId))
+      return false;
+   
+   return std::find(expPaymentIds.begin(), expPaymentIds.end(), paymentId) != expPaymentIds.end();
+}
+
+void listTransfers(bool incoming, bool outgoing, std::vector<std::string> payment_ids,
                    CryptoNote::WalletGreen &wallet, CryptoNote::INode &node)
 {
     size_t numTransactions = wallet.getTransactionCount();
     int64_t totalSpent = 0;
     int64_t totalReceived = 0;
 
+	std::vector<Crypto::Hash> expPaymentIds;
+    for (const std::string& arg: payment_ids) 
+    {
+      Crypto::Hash expectedPaymentId;
+      if (CryptoNote::parsePaymentId(arg, expectedPaymentId)) 
+        expPaymentIds.push_back(expectedPaymentId);
+    }
+    bool filterPaymentIds = !payment_ids.empty();
+         
     for (size_t i = 0; i < numTransactions; i++)
     {
         CryptoNote::WalletTransaction t = wallet.getTransaction(i);
+
+        if(filterPaymentIds && !txHasPaymentId(t.extra, expPaymentIds))
+           continue;
 
         if (t.totalAmount < 0 && outgoing)
         {

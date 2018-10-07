@@ -49,6 +49,7 @@ struct Config
 
     bool walletGiven;
     bool passGiven;
+	bool walletCreate;
 
     std::string host;
     int port;
@@ -60,6 +61,9 @@ struct Config
     uint16_t rpcPort;
     std::string rpcPassword;
 	bool legacySecurity;
+
+	bool testnet;
+	int log_level;
 };
 
 /* This borrows from haskell, and is a nicer boost::optional class. We either

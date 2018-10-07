@@ -51,6 +51,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "version.h"
 
+Logging::LoggerManager* lm;
+
 int main(int argc, char **argv)
 {
   /* On ctrl+c the program seems to throw "simplewallet.exe has stopped
@@ -72,8 +74,11 @@ int main(int argc, char **argv)
   Logging::LoggerManager logManager;
   Logging::LoggerRef logger(logManager, "simplewallet");
 
+  lm = &logManager;
+  logManager.setMaxLevel(static_cast<Logging::Level>(config.log_level));
+
   /* Currency contains our coin parameters, such as decimal places, supply */
-  CryptoNote::Currency currency = CryptoNote::CurrencyBuilder(logManager).currency();
+  CryptoNote::Currency currency = CryptoNote::CurrencyBuilder(logManager).testnet(config.testnet).currency();
 
   System::Dispatcher localDispatcher;
   System::Dispatcher *dispatcher = &localDispatcher;
@@ -265,6 +270,7 @@ void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
   inputLoop(walletInfo, node);
 
   shutdown(walletInfo->wallet, node, alreadyShuttingDown);
+  thd.detach();
 }
 
 Maybe<std::shared_ptr<WalletInfo>> handleAction(CryptoNote::WalletGreen &wallet,
@@ -272,7 +278,7 @@ Maybe<std::shared_ptr<WalletInfo>> handleAction(CryptoNote::WalletGreen &wallet,
 {
   if (action == Generate)
   {
-    return Just<std::shared_ptr<WalletInfo>>(generateWallet(wallet));
+    return Just<std::shared_ptr<WalletInfo>>(generateWallet(wallet, config));
   }
   else if (action == Open)
   {
@@ -294,9 +300,9 @@ Maybe<std::shared_ptr<WalletInfo>> handleAction(CryptoNote::WalletGreen &wallet,
 
 Action getAction(Config &config)
 {
-  if (config.walletGiven || config.passGiven)
+  if (config.walletGiven)
   {
-    return Open;
+    return config.walletCreate ? Generate : Open;
   }
 
   while (true)
@@ -497,7 +503,7 @@ void inputLoop(std::shared_ptr<WalletInfo> &walletInfo, CryptoNote::INode &node)
     }
     else if (command == "incoming_transfers")
     {
-      listTransfers(true, false, walletInfo->wallet, node);
+      listTransfers(true, false, {}, walletInfo->wallet, node);
     }
     else if (command == "exit")
     {
@@ -521,15 +527,40 @@ void inputLoop(std::shared_ptr<WalletInfo> &walletInfo, CryptoNote::INode &node)
     {
       if (command == "outgoing_transfers")
       {
-        listTransfers(false, true, walletInfo->wallet, node);
+        listTransfers(false, true, {}, walletInfo->wallet, node);
       }
       else if (command == "list_transfers")
       {
-        listTransfers(true, true, walletInfo->wallet, node);
+        listTransfers(true, true, {}, walletInfo->wallet, node);
       }
       else if (command == "transfer")
       {
         transfer(walletInfo);
+      }
+      else if (words[0] == "payments")
+      {
+        words.erase(words.begin());
+        listTransfers(true, false, words, walletInfo->wallet, node);
+      }
+      else if (words[0] == "set_log")
+      {
+         words.erase(words.begin());
+         if (words.size() != 1) {
+           std::cout << "use: set_log <log_level_number_0-4>";
+           continue;
+         }
+
+         uint16_t l = 0;
+         if (!Common::fromString(words[0], l)) {
+           std::cout << "wrong number format, use: set_log <log_level_number_0-4>";
+           continue;
+         }
+ 
+         if (l > Logging::TRACE) {
+           std::cout << "wrong number range, use: set_log <log_level_number_0-4>";
+           continue;
+         }
+         lm->setMaxLevel(static_cast<Logging::Level>(l));
       }
       else if (words[0] == "transfer")
       {

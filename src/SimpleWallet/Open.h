@@ -30,11 +30,11 @@ std::shared_ptr<WalletInfo> importWallet(CryptoNote::WalletGreen &wallet);
 
 std::shared_ptr<WalletInfo> createViewWallet(CryptoNote::WalletGreen &wallet);
 
-std::shared_ptr<WalletInfo> generateWallet(CryptoNote::WalletGreen &wallet);
+std::shared_ptr<WalletInfo> generateWallet(CryptoNote::WalletGreen &wallet, Config &config);
 
 Crypto::SecretKey getPrivateKey(std::string outputMsg);
 
-std::string getNewWalletFileName();
+std::string getNewWalletFileName(std::string defaultName = "");
 
 std::string getExistingWalletFileName(Config &config);
 
