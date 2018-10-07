@@ -91,7 +91,11 @@ void help(bool viewWallet)
               << SuccessMsg("save", 25)
               << "Save your wallet state" << std::endl
               << SuccessMsg("incoming_transfers", 25)
-              << "Show incoming transfers" << std::endl;
+              << "Show incoming transfers" << std::endl
+			  << SuccessMsg("payments <payment_id_1>", 25)
+			  << "Show payments <payment_id_1>, ... <payment_id_N>" << std::endl
+			  << SuccessMsg("set_log <level>", 25)
+			  << "Change current log level, <level> is a number 0-4" << std::endl;
                   
     if (viewWallet)
     {
