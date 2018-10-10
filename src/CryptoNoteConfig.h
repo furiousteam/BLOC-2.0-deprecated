@@ -20,7 +20,7 @@
 /*
 Coin name: BLOC
 Coin Ticker: BLOC
-Adresse prefix: Start with letter 'abloc'
+Adresse prefix: Start with letter 'Tbloc'
 Total Supply: 50 000 000
 Premine: 10%
 Emission speed factor: 21
@@ -44,7 +44,7 @@ const uint64_t DIFFICULTY_TARGET                             = 120; // seconds
 const uint32_t CRYPTONOTE_MAX_BLOCK_NUMBER                   = 500000000;
 const size_t   CRYPTONOTE_MAX_BLOCK_BLOB_SIZE                = 500000000;
 const size_t   CRYPTONOTE_MAX_TX_SIZE                        = 1000000000;
-const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 0xee06ac8; // addresses start with "abLoc"
+const uint64_t CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX       = 0xeb5bd9e; // Testnet addresses start with "TbLoc"
 const uint32_t CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW          = 50;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT            = 60 * 60 * 2;
 const uint64_t CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V3         = 3 * DIFFICULTY_TARGET;
@@ -62,7 +62,7 @@ const uint32_t ZAWY_DIFFICULTY_BLOCK_INDEX                   = 40500;
 const size_t ZAWY_DIFFICULTY_V2                              = 0;
 const uint8_t ZAWY_DIFFICULTY_DIFFICULTY_BLOCK_VERSION       = 4;
 
-const uint64_t LWMA_2_DIFFICULTY_BLOCK_INDEX                 = 40500;
+const uint64_t LWMA_2_DIFFICULTY_BLOCK_INDEX                 = 200;
 const uint64_t DIFFICULTY_WINDOW_V3                          = 60;
 const uint64_t DIFFICULTY_BLOCKS_COUNT_V3                    = DIFFICULTY_WINDOW_V3 + 1;
 
@@ -117,7 +117,7 @@ const uint32_t KEY_IMAGE_CHECKING_BLOCK_INDEX                	= 0;
 const uint32_t UPGRADE_HEIGHT_V2                             	= 50;
 const uint32_t UPGRADE_HEIGHT_MAX_BLOCK_SIZE			            = 65000;
 const uint32_t UPGRADE_HEIGHT_V3                             	= 100;
-const uint32_t UPGRADE_HEIGHT_V4                             =  40500;
+const uint32_t UPGRADE_HEIGHT_V4                             =  200;
 const unsigned UPGRADE_VOTING_THRESHOLD                      	= 90;               // percent
 const uint32_t UPGRADE_VOTING_WINDOW                         	= EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
 const uint32_t UPGRADE_WINDOW                                	= EXPECTED_NUMBER_OF_BLOCKS_PER_DAY;  // blocks
@@ -166,11 +166,8 @@ const size_t   P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT          = 5000;          //
 const char     P2P_STAT_TRUSTED_PUB_KEY[] = "";
 
 const char* const SEED_NODES[] = {
-	"174.138.59.135:2082",//atlantic
-	"138.197.208.94:2082",//pacific
-	"95.216.3.162:2082",//baltic
-	"88.198.57.162:2082",//europe
-	"206.189.42.115:2082"//asia
+	"testnet1.bloc.money:2082",//atlantic
+	"testnet2.bloc.money:2082",//pacific
 		
 };
 
@@ -179,22 +176,7 @@ struct CheckpointData {
   const char* blockId;
 };
 
-const CheckpointData CHECKPOINTS[] = {
-	{300, "a20d4c204aa5c01055f80504e8f802c59e8d3e7f8d058884bf8eee18d9b136e8"},
-	{800, "2140edb727df761f6e2a0f1a07a86e6f9c9997c2a2a6ee59d94bdc785c4d76ea"},
-	{1300, "6e2b2a587fb16b0fe6c7c03de69f9060137ad218a941204ad19b832fce8c008f"},
-	{2000, "4d7241ab61013ca26d1e29b34340e743ca6ca2670346704da12f4edb3343aa25"},
-	{3000, "c6e5e6730714bb03b9ade5cc1ed9c4c221611b395c7140a7b1e2886165f464c2"},
-	{5000, "9474c4e9cceaa0590db12ab3aec16aa75608a9626fded74c5f77bee6e29eb20e"},
-	{8000, "5daf3f64c60eba8fd907d2e9c9bb33d88a3fd986eb31bdec9c474a1c8839a687"},
-	{30000, "6fd1c2960dc5c6c83f4864d690d124614f9d538ad7ac798276a30035e2f144da"},
-	{40000, "f3470ae01eedc1456e7c41c57367cfd2e9fa29439e05aee1571532e18f75bfe4"},
-	{40600, "0fd41c01f0a76aa45a3ccb62c2fc5ab325fa57d4c25ddfbe168cd11e7424aa78"},
-	{45000, "014d3a57cfe8c55b198abc96464598261ce9a658a471c0bf2c864543056eed2d"},
-	{50000, "49ed4e36995ff484963e32fe360cea1ba504d802bbe00f9fe2ff5266f70a9c2b"},
-	{60000, "7f398b91508a52f821b23a8c614b39b29c0c499469843c7c43b793dcc10615ca"},
-	{74243, "a27e3ab59adfc42eeb8ee22e16736b092896fb4a25144ce439d35b5d5cbfd70a"},
-	{88948, "0991538f152b4308202d017c5a5ec69921f9e068b0f4bf00203e0e21a7064036"}};
+const CheckpointData CHECKPOINTS[] = {};
 
 }
 
