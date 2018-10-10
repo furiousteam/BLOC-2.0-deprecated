@@ -42,7 +42,7 @@ public:
   size_t getTransactionCount() const;
   size_t getTransferCount() const;
 
-  TransactionId addNewTransaction(uint64_t amount, uint64_t fee, const std::string& extra, const std::vector<WalletLegacyTransfer>& transfers, uint64_t unlockTime);
+  TransactionId addNewTransaction(uint64_t amount, uint64_t fee, const std::string& extra, const std::vector<WalletLegacyTransfer>& transfers, uint64_t unlockTime, const std::vector<TransactionMessage>& messages);
   void updateTransaction(TransactionId transactionId, const CryptoNote::Transaction& tx, uint64_t amount, const std::list<TransactionOutputInformation>& usedOutputs);
   void updateTransactionSendingState(TransactionId transactionId, std::error_code ec);
 
