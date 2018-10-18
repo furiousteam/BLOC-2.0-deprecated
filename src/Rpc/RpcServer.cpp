@@ -127,6 +127,7 @@ std::unordered_map<std::string, RpcServer::RpcHandler<RpcServer::HandlerFunction
   { "/getheight", { jsonMethod<COMMAND_RPC_GET_HEIGHT>(&RpcServer::on_get_height), true } },
   { "/gettransactions", { jsonMethod<COMMAND_RPC_GET_TRANSACTIONS>(&RpcServer::on_get_transactions), false } },
   { "/sendrawtransaction", { jsonMethod<COMMAND_RPC_SEND_RAW_TX>(&RpcServer::on_send_raw_tx), false } },
+  { "/feeaddress", { jsonMethod<COMMAND_RPC_GET_FEE_ADDRESS>(&RpcServer::on_get_fee_address), true } },
   { "/stop_daemon", { jsonMethod<COMMAND_RPC_STOP_DAEMON>(&RpcServer::on_stop_daemon), true } },
   { "/peers", { jsonMethod<COMMAND_RPC_GET_PEER_LIST>(&RpcServer::on_get_peer_list), true } },
   { "/paymentid", { jsonMethod<COMMAND_RPC_GEN_PAYMENT_ID>(&RpcServer::on_get_payment_id), true } },
@@ -215,6 +216,12 @@ bool RpcServer::processJsonRpcRequest(const HttpRequest& request, HttpResponse& 
 
 bool RpcServer::isCoreReady() {
   return m_core.getCurrency().isTestnet() || m_p2p.get_payload_object().isSynchronized();
+}
+
+bool RpcServer::setFeeAddress(const std::string& fee_address, const AccountPublicAddress& fee_acc) {
+  m_fee_address = fee_address;
+  m_fee_acc = fee_acc;
+  return true;
 }
 
 //
@@ -707,6 +714,7 @@ bool RpcServer::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RP
   res.white_peerlist_size = m_p2p.getPeerlistManager().get_white_peers_count();
   res.grey_peerlist_size = m_p2p.getPeerlistManager().get_gray_peers_count();
   res.last_known_block_index = std::max(static_cast<uint32_t>(1), m_protocol.getObservedHeight()) - 1;
+  res.fee_address = m_fee_address.empty() ? std::string() : m_fee_address;
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }
@@ -750,23 +758,50 @@ bool RpcServer::on_get_transactions(const COMMAND_RPC_GET_TRANSACTIONS::request&
 }
 
 bool RpcServer::on_send_raw_tx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMMAND_RPC_SEND_RAW_TX::response& res) {
-  std::vector<BinaryArray> transactions(1);
-  if (!fromHex(req.tx_as_hex, transactions.back())) {
+  BinaryArray tx_blob;
+  if (!fromHex(req.tx_as_hex, tx_blob))
+  {
     logger(INFO) << "[on_send_raw_tx]: Failed to parse tx from hexbuff: " << req.tx_as_hex;
     res.status = "Failed";
     return true;
   }
 
-  Crypto::Hash transactionHash = Crypto::cn_fast_hash(transactions.back().data(), transactions.back().size());
+  Crypto::Hash transactionHash = Crypto::cn_fast_hash(tx_blob.data(), tx_blob.size());
   logger(DEBUGGING) << "transaction " << transactionHash << " came in on_send_raw_tx";
 
-  if (!m_core.addTransactionToPool(transactions.back())) {
+  tx_verification_context tvc = boost::value_initialized<tx_verification_context>();
+  if (!m_core.handle_incoming_tx(tx_blob, tvc, false))
+  {
+    logger(INFO) << "[on_send_raw_tx]: Failed to process tx";
+    res.status = "Failed";
+    return true;
+  }
+
+  if (tvc.m_verification_failed)
+  {
     logger(INFO) << "[on_send_raw_tx]: tx verification failed";
     res.status = "Failed";
     return true;
   }
 
-  m_protocol.relayTransactions(transactions);
+  if (!tvc.m_should_be_relayed)
+  {
+    logger(INFO) << "[on_send_raw_tx]: tx accepted, but not relayed";
+    res.status = "Not relayed";
+    return true;
+  }
+
+  if (!m_fee_address.empty() && m_view_key != NULL_SECRET_KEY) {
+    if (!masternode_check_incoming_tx(tx_blob)) {
+      logger(INFO) << "Transaction not relayed due to lack of masternode fee";    
+      res.status = "Not relayed due to lack of node fee";
+      return true;
+    }
+  }
+
+  NOTIFY_NEW_TRANSACTIONS::request r;
+  r.txs.push_back(asString(tx_blob));
+  m_core.get_protocol()->relay_transactions(r);
   //TODO: make sure that tx has reached other nodes here, probably wait to receive reflections from other nodes
   res.status = CORE_RPC_STATUS_OK;
   return true;
