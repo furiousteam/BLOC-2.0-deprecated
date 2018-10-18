@@ -56,6 +56,7 @@ public:
   virtual Crypto::Hash getTopBlockHash() const override;
   virtual Crypto::Hash getBlockHashByIndex(uint32_t blockIndex) const override;
   virtual uint64_t getBlockTimestampByIndex(uint32_t blockIndex) const override;
+  virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) override;
 
   virtual bool hasBlock(const Crypto::Hash& blockHash) const override;
   virtual BlockTemplate getBlockByIndex(uint32_t index) const override;

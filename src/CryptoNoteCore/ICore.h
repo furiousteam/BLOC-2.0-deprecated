@@ -47,6 +47,7 @@ public:
   virtual Crypto::Hash getTopBlockHash() const = 0;
   virtual Crypto::Hash getBlockHashByIndex(uint32_t blockIndex) const = 0;
   virtual uint64_t getBlockTimestampByIndex(uint32_t blockIndex) const = 0;
+  virtual bool getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) = 0;
 
   virtual bool hasBlock(const Crypto::Hash& blockHash) const = 0;
   virtual BlockTemplate getBlockByIndex(uint32_t index) const = 0;

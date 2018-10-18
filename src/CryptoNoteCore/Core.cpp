@@ -1193,6 +1193,32 @@ bool Core::getBlockTemplate(BlockTemplate& b, const AccountPublicAddress& adr, c
   return false;
 }
 
+bool Core::getTransactionsByPaymentId(const Crypto::Hash& paymentId, std::vector<Transaction>& transactions) {
+  std::vector<Crypto::Hash> blockchainTransactionHashes = getTransactionHashesByPaymentId(paymentId);
+
+  if (blockchainTransactionHashes.empty()) {
+    return false;
+  }
+
+	std::vector<Crypto::Hash> missed_txs;
+	std::vector<BinaryArray> txs;
+
+  getTransactions(blockchainTransactionHashes, txs, missed_txs);
+    if (missed_txs.size() > 0) {
+      return false;
+  }
+
+	for (const BinaryArray& ba : txs) {
+		Transaction tx;
+		if (!fromBinaryArray(tx, ba)) {
+			throw std::runtime_error("Couldn't deserialize transaction");
+		}
+		transactions.push_back(tx);
+	}
+
+  return true;
+}
+
 CoreStatistics Core::getCoreStatistics() const {
   // TODO: implement it
   assert(false);
