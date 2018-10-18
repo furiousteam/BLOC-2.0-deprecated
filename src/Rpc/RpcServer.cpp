@@ -528,6 +528,17 @@ bool RpcServer::on_get_fee_address(const COMMAND_RPC_GET_FEE_ADDRESS::request& r
   return true;
 }
 
+bool RpcServer::setViewKey(const std::string& view_key) {
+  Crypto::Hash private_view_key_hash;
+  size_t size;
+  if (!Common::fromHex(view_key, &private_view_key_hash, sizeof(private_view_key_hash), size) || size != sizeof(private_view_key_hash)) {
+    logger(INFO) << "Could not parse private view key";
+    return false;
+  }
+  m_view_key = *(struct Crypto::SecretKey *) &private_view_key_hash;
+  return true;
+}
+
 bool RpcServer::f_on_block_json(const F_COMMAND_RPC_GET_BLOCK_DETAILS::request& req, F_COMMAND_RPC_GET_BLOCK_DETAILS::response& res) {
 	Hash hash;
 
