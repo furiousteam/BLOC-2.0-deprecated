@@ -419,6 +419,23 @@ bool lookup_acc_outs(const AccountKeys& acc, const Transaction& tx, std::vector<
   return lookup_acc_outs(acc, tx, transactionPublicKey, outs, money_transfered);
 }
 
+bool get_inputs_money_amount(const Transaction& tx, uint64_t& money) {
+  money = 0;
+
+  for (const auto& in : tx.inputs) {
+    uint64_t amount = 0;
+
+    if (in.type() == typeid(KeyInput)) {
+      amount = boost::get<KeyInput>(in).amount;
+    } else if (in.type() == typeid(MultisignatureInput)) {
+      amount = boost::get<MultisignatureInput>(in).amount;
+    }
+
+    money += amount;
+  }
+  return true;
+}
+
 bool lookup_acc_outs(const AccountKeys& acc, const Transaction& tx, const PublicKey& tx_pub_key, std::vector<size_t>& outs, uint64_t& money_transfered) {
   money_transfered = 0;
   size_t keyIndex = 0;

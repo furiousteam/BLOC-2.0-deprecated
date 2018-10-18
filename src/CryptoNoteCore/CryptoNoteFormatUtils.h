@@ -75,6 +75,7 @@ bool checkInputsOverflow(const TransactionPrefix &tx);
 bool checkOutsOverflow(const TransactionPrefix& tx);
 uint64_t get_outs_money_amount(const Transaction& tx);
 std::string short_hash_str(const Crypto::Hash& h);
+bool get_inputs_money_amount(const Transaction& tx, uint64_t& money);
 
 std::vector<uint32_t> relativeOutputOffsetsToAbsolute(const std::vector<uint32_t>& off);
 std::vector<uint32_t> absolute_output_offsets_to_relative(const std::vector<uint32_t>& off);
