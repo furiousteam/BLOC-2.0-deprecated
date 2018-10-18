@@ -64,6 +64,7 @@ namespace
   const command_line::arg_descriptor<std::string> arg_log_file    = {"log-file", "", ""};
   const command_line::arg_descriptor<int>         arg_log_level   = {"log-level", "", 2}; // info level
   const command_line::arg_descriptor<bool>        arg_console     = {"no-console", "Disable daemon console commands"};
+  const command_line::arg_descriptor<std::string> arg_set_fee_address = { "fee-address", "Sets fee address for light wallets to the daemon's RPC responses.", "start with abLoc..." };
   const command_line::arg_descriptor<bool>        arg_testnet_on  = {"testnet", "Used to deploy test nets. Checkpoints and hardcoded seeds are ignored, "
     "network id is changed. Use it with --data-dir flag. The wallet must be launched with --testnet flag.", false};
 }
@@ -114,6 +115,7 @@ int main(int argc, char* argv[])
     command_line::add_arg(desc_cmd_sett, arg_log_level);
     command_line::add_arg(desc_cmd_sett, arg_console);
     command_line::add_arg(desc_cmd_sett, arg_testnet_on);
+    command_line::add_arg(desc_cmd_sett, arg_set_fee_address);
 
     RpcServerConfig::initOptions(desc_cmd_sett);
     NetNodeConfig::initOptions(desc_cmd_sett);
@@ -288,6 +290,25 @@ int main(int argc, char* argv[])
 
     logger(INFO) << "Starting core rpc server on address " << rpcConfig.getBindAddress();
     rpcServer.start(rpcConfig.bindIp, rpcConfig.bindPort);
+    rpcServer.restrictRPC(command_line::get_arg(vm, arg_restricted_rpc));
+    rpcServer.enableCors(command_line::get_arg(vm, arg_enable_cors));
+    if (command_line::has_arg(vm, arg_set_fee_address)) {
+      std::string addr_str = command_line::get_arg(vm, arg_set_fee_address);
+      if (!addr_str.empty()) {
+          AccountPublicAddress acc = boost::value_initialized<AccountPublicAddress>();
+          if (!currency.parseAccountAddressString(addr_str, acc)) {
+            logger(ERROR, BRIGHT_RED) << "Bad fee address: " << addr_str;
+            return 1;
+          }
+          rpcServer.setFeeAddress(addr_str, acc);
+        }
+    }
+    if (command_line::has_arg(vm, arg_set_view_key)) {
+      std::string vk_str = command_line::get_arg(vm, arg_set_view_key);
+    if (!vk_str.empty()) {
+        rpcServer.setViewKey(vk_str);
+      }
+    }
     logger(INFO) << "Core rpc server started ok";
 
     Tools::SignalHandler::install([&dch, &p2psrv] {
