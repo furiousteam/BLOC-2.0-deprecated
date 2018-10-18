@@ -289,8 +289,8 @@ bool Core::hasBlock(const Crypto::Hash& blockHash) const {
   return findSegmentContainingBlock(blockHash) != nullptr;
 }
 
-bool core::parse_tx_from_blob(Transaction& tx, Crypto::Hash& tx_hash, Crypto::Hash& tx_prefix_hash, const BinaryArray& blob) {
-  return c(blob, tx, tx_hash, tx_prefix_hash);
+bool Core::parse_tx_from_blob(Transaction& tx, Crypto::Hash& tx_hash, Crypto::Hash& tx_prefix_hash, const BinaryArray& blob) {
+  return parseAndValidateTransactionFromBinaryArray(blob, tx, tx_hash, tx_prefix_hash);
 }
 
 BlockTemplate Core::getBlockByIndex(uint32_t index) const {

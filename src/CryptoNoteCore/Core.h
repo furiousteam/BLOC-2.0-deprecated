@@ -61,6 +61,8 @@ public:
   virtual BlockTemplate getBlockByIndex(uint32_t index) const override;
   virtual BlockTemplate getBlockByHash(const Crypto::Hash& blockHash) const override;
 
+  virtual bool parse_tx_from_blob(Transaction& tx, Crypto::Hash& tx_hash, Crypto::Hash& tx_prefix_hash, const BinaryArray& blob);
+
   virtual std::vector<Crypto::Hash> buildSparseChain() const override;
   virtual std::vector<Crypto::Hash> findBlockchainSupplement(const std::vector<Crypto::Hash>& remoteBlockIds, size_t maxCount,
     uint32_t& totalBlockCount, uint32_t& startBlockIndex) const override;
