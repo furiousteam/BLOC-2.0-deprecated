@@ -16,24 +16,28 @@
 // along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "RpcServer.h"
+#include "version.h"
 
 #include <future>
 #include <unordered_map>
 
 // CryptoNote
 #include "Common/StringTools.h"
+#include "Common/Base58.h"
+#include "CryptoNoteCore/TransactionUtils.h"
 #include "CryptoNoteCore/CryptoNoteTools.h"
+#include "CryptoNoteCore/CryptoNoteFormatUtils.h"
 #include "CryptoNoteCore/Core.h"
+#include "CryptoNoteCore/Currency.h"
 #include "CryptoNoteCore/Miner.h"
 #include "CryptoNoteCore/TransactionExtra.h"
 
-#include "CryptoNoteProtocol/CryptoNoteProtocolHandlerCommon.h"
+#include "CryptoNoteProtocol/ICryptoNoteProtocolQuery.h"
 
 #include "P2p/NetNode.h"
 
 #include "CoreRpcServerErrorCodes.h"
 #include "JsonRpc.h"
-
 #undef ERROR
 
 using namespace Logging;
