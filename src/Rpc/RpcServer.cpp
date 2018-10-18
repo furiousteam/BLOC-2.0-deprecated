@@ -224,6 +224,31 @@ bool RpcServer::setFeeAddress(const std::string& fee_address, const AccountPubli
   return true;
 }
 
+bool RpcServer::masternode_check_incoming_tx(const BinaryArray& tx_blob) {
+  Crypto::Hash tx_hash = NULL_HASH;
+  Crypto::Hash tx_prefixt_hash = NULL_HASH;
+  Transaction tx;
+  if (!parseAndValidateTransactionFromBinaryArray(tx_blob, tx, tx_hash, tx_prefixt_hash)) {
+    logger(INFO) << "Could not parse tx from blob";
+    return false;
+  }
+  CryptoNote::TransactionPrefix transaction = *static_cast<const TransactionPrefix*>(&tx);
+
+  std::vector<uint32_t> out;
+  uint64_t amount;
+
+  if (!CryptoNote::findOutputsToAccount(transaction, m_fee_acc, m_view_key, out, amount)) {
+    logger(INFO) << "Could not find outputs to masternode fee address";
+    return false;
+  }
+
+  if (amount != 0) {
+    logger(INFO) << "Masternode received relayed transaction fee: " << m_core.currency().formatAmount(amount) << " QWC";
+    return true;
+  }
+  return false;
+}
+
 //
 // Binary handlers
 //
