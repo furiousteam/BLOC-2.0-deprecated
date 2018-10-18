@@ -177,6 +177,30 @@ int main(int argc, char* argv[])
       return 0;
     }
 
+    logger(INFO, BRIGHT_GREEN) <<
+
+      #ifdef _WIN32
+     " ____   _       ____    _____\n"
+     "|  _ \ | |     / __ \  / ____|\n"
+     "| |_) || |    | |  | || |     \n"
+     "|  _ < | |    | |  | || |     \n"
+     "| |_) || |____| |__| || |____ \n"
+     "|____/ |______|\____/  \_____|\n"
+     "                              \n"
+     "                              \n"<< ENDL;
+     #else
+     "\n                            \n"
+     "██████╗ ██╗      ██████╗  ██████╗\n"
+     "██╔══██╗██║     ██╔═══██╗██╔════╝\n"
+     "██████╔╝██║     ██║   ██║██║     \n"
+     "██╔══██╗██║     ██║   ██║██║     \n"
+     "██████╔╝███████╗╚██████╔╝╚██████╗\n"
+     "╚═════╝ ╚══════╝ ╚═════╝  ╚═════╝\n"
+     "                                 \n" << ENDL;
+      #endif
+
+    logger(INFO, BRIGHT_GREEN) << "Welcome to " << CryptoNote::CRYPTONOTE_NAME << " v" << PROJECT_VERSION_LONG;
+    
     logger(INFO) << "Module folder: " << argv[0];
 
     bool testnet_mode = command_line::get_arg(vm, arg_testnet_on);
