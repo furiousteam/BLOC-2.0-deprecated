@@ -1145,11 +1145,13 @@ bool RpcServer::k_on_check_tx_key(const K_COMMAND_RPC_CHECK_TX_KEY::request& req
   Transaction tx;
   std::vector<Crypto::Hash> tx_ids;
   tx_ids.push_back(txid);
-  std::list<Crypto::Hash> missed_txs;
-  std::list<Transaction> txs;
-  m_core.getTransactions(tx_ids, txs, missed_txs, true);
+	std::vector<Crypto::Hash> missed_txs;
+  std::vector<BinaryArray> txs;
+  m_core.getTransactions(tx_ids, txs, missed_txs);
   if (1 == txs.size()) {
-    tx = txs.front();
+		if (!fromBinaryArray(tx, txs.front())) {
+			throw std::runtime_error("Couldn't deserialize transaction");
+		}
   }
   else {
     throw JsonRpc::JsonRpcError{
@@ -1213,11 +1215,13 @@ bool RpcServer::k_on_check_tx_with_view_key(const K_COMMAND_RPC_CHECK_TX_WITH_PR
   Transaction tx;
   std::vector<Crypto::Hash> tx_ids;
   tx_ids.push_back(txid);
-  std::list<Crypto::Hash> missed_txs;
-  std::list<Transaction> txs;
-  m_core.getTransactions(tx_ids, txs, missed_txs, true);
+	std::vector<Crypto::Hash> missed_txs;
+  std::vector<BinaryArray> txs;
+  m_core.getTransactions(tx_ids, txs, missed_txs);
   if (1 == txs.size()) {
-    tx = txs.front();
+		if (!fromBinaryArray(tx, txs.front())) {
+			throw std::runtime_error("Couldn't deserialize transaction");
+		}
   }
   else {
     throw JsonRpc::JsonRpcError{
