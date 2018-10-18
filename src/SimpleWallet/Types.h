@@ -24,11 +24,13 @@ struct WalletInfo
     WalletInfo(std::string walletFileName, 
                std::string walletPass, 
                std::string walletAddress,
+               std::string remoteFeeAddress,
                bool viewWallet,
                CryptoNote::WalletGreen &wallet) : 
                walletFileName(walletFileName), 
                walletPass(walletPass), 
                walletAddress(walletAddress),
+               remoteFeeAddress(remoteFeeAddress),
                viewWallet(viewWallet),
                wallet(wallet) {}
 
@@ -37,6 +39,7 @@ struct WalletInfo
     std::string walletFileName;
     std::string walletPass;
     std::string walletAddress;
+    std::string remoteFeeAddress;
 
     bool viewWallet;
 
@@ -49,7 +52,7 @@ struct Config
 
     bool walletGiven;
     bool passGiven;
-	bool walletCreate;
+	  bool walletCreate;
 
     std::string host;
     int port;
@@ -60,10 +63,12 @@ struct Config
     std::string rpcHost;
     uint16_t rpcPort;
     std::string rpcPassword;
-	bool legacySecurity;
+	  bool legacySecurity;
 
-	bool testnet;
-	int log_level;
+    std::string remoteFeeAddress;
+
+	  bool testnet;
+	  int log_level;
 };
 
 /* This borrows from haskell, and is a nicer boost::optional class. We either

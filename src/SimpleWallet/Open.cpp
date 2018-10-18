@@ -65,7 +65,7 @@ std::shared_ptr<WalletInfo> createViewWallet(CryptoNote::WalletGreen &wallet)
     viewWalletMsg();
 
     return std::make_shared<WalletInfo>(walletFileName, walletPass, 
-                                        address, true, wallet);
+                                        address, "", true, wallet);
 }
 
 std::shared_ptr<WalletInfo> importWallet(CryptoNote::WalletGreen &wallet)
@@ -93,7 +93,7 @@ std::shared_ptr<WalletInfo> importFromKeys(CryptoNote::WalletGreen &wallet,
               << std::endl << std::endl;
 
     return std::make_shared<WalletInfo>(walletFileName, walletPass, 
-                                        walletAddress, false, wallet);
+                                        walletAddress, "", false, wallet);
 }
 
 std::shared_ptr<WalletInfo> generateWallet(CryptoNote::WalletGreen &wallet, Config &config)
@@ -119,7 +119,7 @@ std::shared_ptr<WalletInfo> generateWallet(CryptoNote::WalletGreen &wallet, Conf
               << std::endl << std::endl;
 
     return std::make_shared<WalletInfo>(walletFileName, walletPass,
-                                        walletAddress, false, wallet);
+                                        walletAddress, config.remoteFeeAddress, false, wallet);
 }
 
 Maybe<std::shared_ptr<WalletInfo>> openWallet(CryptoNote::WalletGreen &wallet,
@@ -171,6 +171,7 @@ Maybe<std::shared_ptr<WalletInfo>> openWallet(CryptoNote::WalletGreen &wallet,
                            (std::make_shared<WalletInfo>(walletFileName,
                                                          walletPass, 
                                                          walletAddress,
+                                                         config.remoteFeeAddress,
                                                          true, 
                                                          wallet));
             }
@@ -186,6 +187,7 @@ Maybe<std::shared_ptr<WalletInfo>> openWallet(CryptoNote::WalletGreen &wallet,
                            (std::make_shared<WalletInfo>(walletFileName,
                                                          walletPass, 
                                                          walletAddress,
+                                                         config.remoteFeeAddress,
                                                          false, 
                                                          wallet));
             }
@@ -194,6 +196,7 @@ Maybe<std::shared_ptr<WalletInfo>> openWallet(CryptoNote::WalletGreen &wallet,
                        (std::make_shared<WalletInfo>(walletFileName,
                                                      walletPass, 
                                                      walletAddress,
+                                                     config.remoteFeeAddress,
                                                      false,
                                                      wallet));
         }

@@ -42,6 +42,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #include <SimpleWallet/SimpleWalletRPCServer.h>
 #include <PaymentGateService/PaymentServiceConfiguration.h>
 #include <Logging/ConsoleLogger.h>
+#include "Rpc/HttpClient.h"
 
 #ifdef _WIN32
 /* Prevents windows.h redefining min/max which breaks compilation */
@@ -50,6 +51,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 #include "version.h"
+using Common::JsonValue;
 
 Logging::LoggerManager* lm;
 
@@ -127,6 +129,8 @@ int main(int argc, char **argv)
     }
   }
 
+  config.remoteFeeAddress = getFeeAddress(config);
+
   /* Create the wallet instance */
   CryptoNote::WalletGreen wallet(*dispatcher, currency, *node,
                                  logger.getLogger());
@@ -143,6 +147,53 @@ void rpc_thread(Config &config, CryptoNote::WalletGreen &wallet, CryptoNote::INo
   
   SimpleWalletRPC::SimpleWalletRPCServer rpcServer(dispatcher, stopEvent, wallet, node, config, logger);
   rpcServer.start();
+}
+
+std::string getFeeAddress(Config &config) {
+  System::Dispatcher dispatcher;
+  CryptoNote::HttpClient httpClient(dispatcher, config.host, config.port);
+
+  CryptoNote::HttpRequest req;
+  CryptoNote::HttpResponse res;
+
+  req.setUrl("/feeaddress");
+  try {
+	  httpClient.request(req, res);
+  }
+  catch (const std::exception& e) {
+    std::cout << WarningMsg("Error connecting to the remote node: ") << e.what() << std::endl;
+  }
+
+  if (res.getStatus() != CryptoNote::HttpResponse::STATUS_200) {
+    std::cout << WarningMsg("Remote node returned code ") << std::to_string(res.getStatus()) << std::endl;
+  }
+
+  std::string address;
+  if (!processServerFeeAddressResponse(res.getBody(), address)) {
+    std::cout << WarningMsg("Failed to parse remote node response") << std::endl;
+  }
+
+  return address;
+}
+
+bool processServerFeeAddressResponse(const std::string& response, std::string& fee_address) {
+    try {
+        std::stringstream stream(response);
+        JsonValue json;
+        stream >> json;
+
+        auto rootIt = json.getObject().find("fee_address");
+        if (rootIt == json.getObject().end()) {
+            return false;
+        }
+
+        fee_address = rootIt->second.getString();
+    }
+    catch (std::exception&) {
+        return false;
+    }
+
+    return true;
 }
 
 void run(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,

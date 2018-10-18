@@ -70,7 +70,7 @@ Config parseArguments(int argc, char **argv)
     config.legacySecurity = false;
     config.testnet = false;
     config.log_level = Logging::TRACE;
-	config.walletCreate = false;
+	  config.walletCreate = false;
 
     if (cmdOptionExists(argv, argv+argc, "-h")
      || cmdOptionExists(argv, argv+argc, "--help"))
@@ -253,7 +253,6 @@ Config parseArguments(int argc, char **argv)
           config.rpcPassword = rpcPassword;
         }
     }
-    
     
     if (cmdOptionExists(argv, argv+argc, "--legacy-security")) {
         config.legacySecurity = true;

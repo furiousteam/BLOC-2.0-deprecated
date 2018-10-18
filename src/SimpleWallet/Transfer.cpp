@@ -306,6 +306,7 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo,
   std::string address;
   uint64_t amount;
   uint64_t fee = CryptoNote::parameters::MINIMUM_FEE;
+  uint64_t remoteFee = getRemoteFee(walletInfo);
   std::string extra;
 
   /* Check we have enough args for the default required parameters */
@@ -393,7 +394,7 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo,
     }
   }
 
-  doTransfer(mixin, address, amount, fee, extra, walletInfo);
+  doTransfer(mixin, address, amount, fee, remoteFee, extra, walletInfo);
 }
 
 void transfer(std::shared_ptr<WalletInfo> walletInfo)
@@ -447,12 +448,14 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo)
 
   uint64_t fee = maybeFee.x;
 
-  if (balance < amount + fee)
+  uint64_t remoteFee = getRemoteFee(walletInfo);
+
+  if (balance < amount + fee + remoteFee)
   {
     std::cout << WarningMsg("You don't have enough funds to cover this "
                             "transaction!")
               << std::endl
-              << InformationMsg("Funds needed: " + formatAmount(amount + fee))
+              << InformationMsg("Funds needed: " + formatAmount(amount + fee + remoteFee))
               << std::endl
               << SuccessMsg("Funds available: " + formatAmount(balance))
               << std::endl;
@@ -479,16 +482,16 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo)
 
   std::string extra = maybeExtra.x;
 
-  doTransfer(mixin, address, amount, fee, extra, walletInfo);
+  doTransfer(mixin, address, amount, fee, remoteFee, extra, walletInfo);
 }
 
 void doTransfer(uint16_t mixin, std::string address, uint64_t amount,
-                uint64_t fee, std::string extra,
+                uint64_t fee, uint64_t remoteFee, std::string extra,
                 std::shared_ptr<WalletInfo> walletInfo)
 {
   uint64_t balance = walletInfo->wallet.getActualBalance();
 
-  if (balance < amount + fee)
+  if (balance < amount + fee + remoteFee)
   {
     std::cout << WarningMsg("You don't have enough funds to cover this "
                             "transaction!")
@@ -502,8 +505,16 @@ void doTransfer(uint16_t mixin, std::string address, uint64_t amount,
 
   CryptoNote::TransactionParameters p;
 
-  p.destinations = std::vector<CryptoNote::WalletOrder>{
-      {address, amount}};
+  if (!walletInfo->remoteFeeAddress.empty()) {
+    p.destinations = std::vector<CryptoNote::WalletOrder>{
+        {address, amount}, 
+        {walletInfo->remoteFeeAddress, remoteFee}
+    };
+  } else {
+    p.destinations = std::vector<CryptoNote::WalletOrder>{
+        {address, amount}
+    };
+  }
 
   p.fee = fee;
   p.mixIn = mixin;
@@ -751,6 +762,13 @@ Maybe<uint64_t> getFee()
     }
   }
 }
+
+uint64_t getRemoteFee(std::shared_ptr<WalletInfo> walletInfo) {
+  int64_t remote_node_fee = static_cast<int64_t>(1);
+
+  return remote_node_fee;
+}
+
 
 Maybe<uint16_t> getMixin()
 {

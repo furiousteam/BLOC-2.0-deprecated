@@ -35,6 +35,9 @@ void inputLoop(std::shared_ptr<WalletInfo> &walletInfo,
 bool shutdown(CryptoNote::WalletGreen &wallet, CryptoNote::INode &node,
               bool &alreadyShuttingDown);
 
+std::string getFeeAddress(Config &config);
+bool processServerFeeAddressResponse(const std::string& response, std::string& fee_address);
+
 std::string getInputAndDoWorkWhileIdle(std::shared_ptr<WalletInfo> &walletInfo);
 
 

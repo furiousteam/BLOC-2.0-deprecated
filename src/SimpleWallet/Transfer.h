@@ -27,7 +27,7 @@ void transfer(std::shared_ptr<WalletInfo> walletInfo,
               std::vector<std::string> args);
 
 void doTransfer(uint16_t mixin, std::string address, uint64_t amount,
-                uint64_t fee, std::string extra,
+                uint64_t fee, uint64_t remoteFee, std::string extra,
                 std::shared_ptr<WalletInfo> walletInfo);
 
 void sendMultipleTransactions(CryptoNote::WalletGreen &wallet,
@@ -53,6 +53,8 @@ Maybe<std::string> getPaymentID();
 Maybe<std::string> getDestinationAddress();
 
 Maybe<uint64_t> getFee();
+
+uint64_t getRemoteFee(std::shared_ptr<WalletInfo> walletInfo);
 
 Maybe<uint64_t> getTransferAmount();
 
