@@ -247,7 +247,7 @@ bool RpcServer::masternode_check_incoming_tx(const BinaryArray& tx_blob) {
   }
 
   if (amount != 0) {
-    logger(INFO) << "Masternode received relayed transaction fee: " << m_core.currency().formatAmount(amount) << " QWC";
+    logger(INFO) << "Masternode received relayed transaction fee: " << m_core.getCurrency().formatAmount(amount) << " QWC";
     return true;
   }
   return false;
@@ -1140,7 +1140,7 @@ bool RpcServer::k_on_check_tx_key(const K_COMMAND_RPC_CHECK_TX_KEY::request& req
   }
   // parse address
   CryptoNote::AccountPublicAddress address;
-  if (!m_core.currency().parseAccountAddressString(req.address, address)) {
+  if (!m_core.getCurrency().parseAccountAddressString(req.address, address)) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse address " + req.address + '.' };
   }
   // parse txkey
@@ -1208,7 +1208,7 @@ bool RpcServer::k_on_check_tx_with_view_key(const K_COMMAND_RPC_CHECK_TX_WITH_PR
   }
   // parse address
   CryptoNote::AccountPublicAddress address;
-  if (!m_core.currency().parseAccountAddressString(req.address, address)) {
+  if (!m_core.getCurrency().parseAccountAddressString(req.address, address)) {
     throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse address " + req.address + '.' };
   }
   // parse view key
