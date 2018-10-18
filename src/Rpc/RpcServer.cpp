@@ -1263,12 +1263,6 @@ bool RpcServer::k_on_check_tx_with_view_key(const K_COMMAND_RPC_CHECK_TX_WITH_PR
   res.amount = received;
   res.outputs = outputs;
 
-  Crypto::Hash blockHash;
-  uint32_t blockHeight;
-  if (m_core.getBlockContainingTx(txid, blockHash, blockHeight)) {
-    res.confirmations = m_protocolQuery.getObservedHeight() - blockHeight;
-  }
-
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }

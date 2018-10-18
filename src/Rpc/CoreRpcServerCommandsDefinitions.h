@@ -783,12 +783,10 @@ struct K_COMMAND_RPC_CHECK_TX_WITH_PRIVATE_VIEW_KEY {
   struct response {
     uint64_t amount;
     std::vector<TransactionOutput> outputs;
-    uint32_t confirmations = 0;
     std::string status;
     void serialize(ISerializer &s) {
       KV_MEMBER(amount)
       KV_MEMBER(outputs)
-      KV_MEMBER(confirmations)
       KV_MEMBER(status)
     }
   };
