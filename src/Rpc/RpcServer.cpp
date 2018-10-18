@@ -31,6 +31,7 @@
 #include "CryptoNoteCore/Currency.h"
 #include "CryptoNoteCore/Miner.h"
 #include "CryptoNoteCore/TransactionExtra.h"
+#include "CryptoNoteCore/VerificationContext.h"
 
 #include "CryptoNoteProtocol/ICryptoNoteProtocolQuery.h"
 
@@ -38,6 +39,7 @@
 
 #include "CoreRpcServerErrorCodes.h"
 #include "JsonRpc.h"
+
 #undef ERROR
 
 using namespace Logging;
