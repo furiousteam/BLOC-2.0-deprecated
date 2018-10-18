@@ -317,7 +317,21 @@ struct COMMAND_RPC_STOP_DAEMON {
   typedef EMPTY_STRUCT request;
   typedef STATUS_STRUCT response;
 };
+//-----------------------------------------------
+struct COMMAND_RPC_GET_PEER_LIST {
+	typedef EMPTY_STRUCT request;
 
+	struct response {
+		std::vector<std::string> peers;
+		std::string status;
+
+		void serialize(ISerializer &s) {
+			KV_MEMBER(peers)
+			KV_MEMBER(status)
+		}
+	};
+};
+//-----------------------------------------------
 //
 struct COMMAND_RPC_GETBLOCKCOUNT {
   typedef std::vector<std::string> request;
@@ -678,6 +692,18 @@ struct COMMAND_RPC_QUERY_BLOCKS_LITE {
       KV_MEMBER(fullOffset)
       KV_MEMBER(items)
     }
+  };
+};
+	
+struct COMMAND_RPC_GEN_PAYMENT_ID {
+  typedef EMPTY_STRUCT request;
+  
+  struct response {
+	  std::string payment_id;
+
+	  void serialize(ISerializer &s) {
+		  KV_MEMBER(payment_id)
+	  }
   };
 };
 
