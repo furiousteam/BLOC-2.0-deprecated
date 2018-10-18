@@ -827,36 +827,21 @@ bool RpcServer::on_get_transactions(const COMMAND_RPC_GET_TRANSACTIONS::request&
 }
 
 bool RpcServer::on_send_raw_tx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMMAND_RPC_SEND_RAW_TX::response& res) {
-  BinaryArray tx_blob;
-  if (!fromHex(req.tx_as_hex, tx_blob))
-  {
+  std::vector<BinaryArray> transactions(1);
+  if (!fromHex(req.tx_as_hex, transactions.back())) {
     logger(INFO) << "[on_send_raw_tx]: Failed to parse tx from hexbuff: " << req.tx_as_hex;
     res.status = "Failed";
     return true;
   }
 
-  Crypto::Hash transactionHash = Crypto::cn_fast_hash(tx_blob.data(), tx_blob.size());
+  Crypto::Hash transactionHash = Crypto::cn_fast_hash(transactions.back().data(), transactions.back().size());
   logger(DEBUGGING) << "transaction " << transactionHash << " came in on_send_raw_tx";
 
-  tx_verification_context tvc = boost::value_initialized<tx_verification_context>();
-  if (!m_core.handle_incoming_tx(tx_blob, tvc, false))
+  BinaryArray tx_blob;
+  if (!fromHex(req.tx_as_hex, tx_blob))
   {
-    logger(INFO) << "[on_send_raw_tx]: Failed to process tx";
+    logger(INFO) << "[on_send_raw_tx]: Failed to parse tx from hexbuff: " << req.tx_as_hex;
     res.status = "Failed";
-    return true;
-  }
-
-  if (tvc.m_verification_failed)
-  {
-    logger(INFO) << "[on_send_raw_tx]: tx verification failed";
-    res.status = "Failed";
-    return true;
-  }
-
-  if (!tvc.m_should_be_relayed)
-  {
-    logger(INFO) << "[on_send_raw_tx]: tx accepted, but not relayed";
-    res.status = "Not relayed";
     return true;
   }
 
@@ -868,9 +853,13 @@ bool RpcServer::on_send_raw_tx(const COMMAND_RPC_SEND_RAW_TX::request& req, COMM
     }
   }
 
-  NOTIFY_NEW_TRANSACTIONS::request r;
-  r.txs.push_back(asString(tx_blob));
-  m_core.get_protocol()->relay_transactions(r);
+  if (!m_core.addTransactionToPool(transactions.back())) {
+    logger(INFO) << "[on_send_raw_tx]: tx verification failed";
+    res.status = "Failed";
+    return true;
+  }
+
+  m_protocol.relayTransactions(transactions);
   //TODO: make sure that tx has reached other nodes here, probably wait to receive reflections from other nodes
   res.status = CORE_RPC_STATUS_OK;
   return true;
