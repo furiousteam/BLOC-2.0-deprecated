@@ -10,7 +10,7 @@
 // Bytecoin is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
+// GNU Lesser General Public License for more details.à
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with Bytecoin.  If not, see <http://www.gnu.org/licenses/>.
@@ -1124,6 +1124,152 @@ bool RpcServer::on_get_block_header_by_height(const COMMAND_RPC_GET_BLOCK_HEADER
   CachedBlock cachedBlock(block);
   assert(cachedBlock.getBlockIndex() == req.height );
   fill_block_header_response(block, false, index, cachedBlock.getBlockHash(), res.block_header);
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+
+bool RpcServer::k_on_check_tx_key(const K_COMMAND_RPC_CHECK_TX_KEY::request& req, K_COMMAND_RPC_CHECK_TX_KEY::response& res) {
+  // parse txid
+  Crypto::Hash txid;
+  if (!parse_hash256(req.txid, txid)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse txid" };
+  }
+  // parse address
+  CryptoNote::AccountPublicAddress address;
+  if (!m_core.currency().parseAccountAddressString(req.address, address)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse address " + req.address + '.' };
+  }
+  // parse txkey
+  Crypto::Hash tx_key_hash;
+  size_t size;
+  if (!Common::fromHex(req.txkey, &tx_key_hash, sizeof(tx_key_hash), size) || size != sizeof(tx_key_hash)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse txkey" };
+  }
+  Crypto::SecretKey tx_key = *(struct Crypto::SecretKey *) &tx_key_hash;
+  // fetch tx
+  Transaction tx;
+  std::vector<Crypto::Hash> tx_ids;
+  tx_ids.push_back(txid);
+  std::list<Crypto::Hash> missed_txs;
+  std::list<Transaction> txs;
+  m_core.getTransactions(tx_ids, txs, missed_txs, true);
+  if (1 == txs.size()) {
+    tx = txs.front();
+  }
+  else {
+    throw JsonRpc::JsonRpcError{
+      CORE_RPC_ERROR_CODE_WRONG_PARAM,
+      "Couldn't find transaction with hash: " + req.txid + '.' };
+  }
+  CryptoNote::TransactionPrefix transaction = *static_cast<const TransactionPrefix*>(&tx);
+  // obtain key derivation
+  Crypto::KeyDerivation derivation;
+  if (!Crypto::generate_key_derivation(address.viewPublicKey, tx_key, derivation))
+  {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to generate key derivation from supplied parameters" };
+  }
+  
+  // look for outputs
+  uint64_t received(0);
+  size_t keyIndex(0);
+  std::vector<TransactionOutput> outputs;
+  try {
+    for (const TransactionOutput& o : transaction.outputs) {
+      if (o.target.type() == typeid(KeyOutput)) {
+        const KeyOutput out_key = boost::get<KeyOutput>(o.target);
+        Crypto::PublicKey pubkey;
+        derive_public_key(derivation, keyIndex, address.spendPublicKey, pubkey);
+        if (pubkey == out_key.key) {
+          received += o.amount;
+          outputs.push_back(o);
+        }
+      }
+      ++keyIndex;
+    }
+  }
+  catch (...)
+  {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Unknown error" };
+  }
+  res.amount = received;
+  res.outputs = outputs;
+  res.status = CORE_RPC_STATUS_OK;
+  return true;
+}
+bool RpcServer::k_on_check_tx_with_view_key(const K_COMMAND_RPC_CHECK_TX_WITH_PRIVATE_VIEW_KEY::request& req, K_COMMAND_RPC_CHECK_TX_WITH_PRIVATE_VIEW_KEY::response& res) {
+  // parse txid
+  Crypto::Hash txid;
+  if (!parse_hash256(req.txid, txid)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse txid" };
+  }
+  // parse address
+  CryptoNote::AccountPublicAddress address;
+  if (!m_core.currency().parseAccountAddressString(req.address, address)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse address " + req.address + '.' };
+  }
+  // parse view key
+  Crypto::Hash view_key_hash;
+  size_t size;
+  if (!Common::fromHex(req.view_key, &view_key_hash, sizeof(view_key_hash), size) || size != sizeof(view_key_hash)) {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to parse private view key" };
+  }
+  Crypto::SecretKey viewKey = *(struct Crypto::SecretKey *) &view_key_hash;
+  // fetch tx
+  Transaction tx;
+  std::vector<Crypto::Hash> tx_ids;
+  tx_ids.push_back(txid);
+  std::list<Crypto::Hash> missed_txs;
+  std::list<Transaction> txs;
+  m_core.getTransactions(tx_ids, txs, missed_txs, true);
+  if (1 == txs.size()) {
+    tx = txs.front();
+  }
+  else {
+    throw JsonRpc::JsonRpcError{
+      CORE_RPC_ERROR_CODE_WRONG_PARAM,
+      "Couldn't find transaction with hash: " + req.txid + '.' };
+  }
+  CryptoNote::TransactionPrefix transaction = *static_cast<const TransactionPrefix*>(&tx);
+  
+  // get tx pub key
+  Crypto::PublicKey txPubKey = getTransactionPublicKeyFromExtra(transaction.extra);
+  // obtain key derivation
+  Crypto::KeyDerivation derivation;
+  if (!Crypto::generate_key_derivation(txPubKey, viewKey, derivation))
+  {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_WRONG_PARAM, "Failed to generate key derivation from supplied parameters" };
+  }
+  // look for outputs
+  uint64_t received(0);
+  size_t keyIndex(0);
+  std::vector<TransactionOutput> outputs;
+  try {
+    for (const TransactionOutput& o : transaction.outputs) {
+      if (o.target.type() == typeid(KeyOutput)) {
+        const KeyOutput out_key = boost::get<KeyOutput>(o.target);
+        Crypto::PublicKey pubkey;
+        derive_public_key(derivation, keyIndex, address.spendPublicKey, pubkey);
+        if (pubkey == out_key.key) {
+          received += o.amount;
+          outputs.push_back(o);
+        }
+      }
+      ++keyIndex;
+    }
+  }
+  catch (...)
+  {
+    throw JsonRpc::JsonRpcError{ CORE_RPC_ERROR_CODE_INTERNAL_ERROR, "Unknown error" };
+  }
+  res.amount = received;
+  res.outputs = outputs;
+
+  Crypto::Hash blockHash;
+  uint32_t blockHeight;
+  if (m_core.getBlockContainingTx(txid, blockHash, blockHeight)) {
+    res.confirmations = m_protocolQuery.getObservedHeight() - blockHeight;
+  }
+
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }
