@@ -676,6 +676,23 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
               std::distance(chainsLeaves.begin(), std::find(chainsLeaves.begin(), chainsLeaves.end(), cache));
           assert(endpointIndex != chainsStorage.size());
           assert(endpointIndex != 0);
+
+/*        int64_t reorgSize = cache->getTopBlockIndex() - cache->getStartBlockIndex()) + 1;
+          std::vector<uint64_t> alt_chain = cache->getLastTimestamps(reorgSize);
+          std::vector<uint64_t> main_chain = mainChainCache->getLastTimestamps(60, cache->getStartBlockIndex(), UseGenesis{false});
+
+          logger(Logging::WARNING) << "DEBUG2: reorgSize " << reorgSize;
+          for(size_t i=0; i < alt_chain.size(); i++)
+              logger(Logging::WARNING) << "DEBUG2: alt_chain [" << i << "] " << alt_chain[i];
+          for(size_t i=0; i < main_chain.size(); i++)
+              logger(Logging::WARNING) << "DEBUG2: main_chain [" << i << "] " << main_chain[i];*/
+
+          for(size_t i=0; i < chainsLeaves.size(); i++)
+		  {
+			  logger(Logging::WARNING) << "DEBUG2: leaf " << i << " TBI  " << chainsLeaves[i]->getTopBlockIndex() << " SBI " << chainsLeaves[i]->getStartBlockIndex();
+		  }
+		  logger(Logging::WARNING) << "DEBUG2: cache TBI  " << cache->getTopBlockIndex() << " SBI " << cache->getStartBlockIndex();
+
           std::swap(chainsLeaves[0], chainsLeaves[endpointIndex]);
           updateMainChainSet();
 
@@ -687,7 +704,7 @@ std::error_code Core::addBlock(const CachedBlock& cachedBlock, RawBlock&& rawBlo
 
           ret = error::AddBlockErrorCode::ADDED_TO_ALTERNATIVE_AND_SWITCHED;
 
-          logger(Logging::INFO) << "Switching to alternative chain! New top block hash: " << cachedBlock.getBlockHash() << ", index: " << (previousBlockIndex + 1)
+          logger(Logging::WARNING) << "Switching to alternative chain! New top block hash: " << cachedBlock.getBlockHash() << ", index: " << (previousBlockIndex + 1)
                                 << ", previous top block hash: " << chainsLeaves[endpointIndex]->getTopBlockHash() << ", index: " << chainsLeaves[endpointIndex]->getTopBlockIndex();
         }
       }
