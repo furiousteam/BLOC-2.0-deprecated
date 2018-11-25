@@ -3110,8 +3110,8 @@ size_t WalletGreen::createFusionTransaction(uint64_t threshold, uint16_t mixin,
   if (transactionAmount) {}
   do {
     if (round != 0) {
-      fusionInputs.pop_back();
-      keysInfo.pop_back();
+      fusionInputs.resize(fusionInputs.size()/2);
+      keysInfo.resize(keysInfo.size()/2);
     }
 
     uint64_t inputsAmount = std::accumulate(fusionInputs.begin(), fusionInputs.end(), static_cast<uint64_t>(0), [] (uint64_t amount, const OutputToTransfer& input) {
